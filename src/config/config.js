@@ -18,7 +18,7 @@ const envVarsSchema = Joi.object()
     JWT_VERIFY_EMAIL_EXPIRATION_MINUTES: Joi.number()
       .default(1440)
       .description('minutes after which verify email token expires'),
-    FRONTEND_URL: Joi.string().default('http://localhost:3000').description('Frontend application URL'),
+    FRONTEND_URL: Joi.string().default('https://main.d17v4yz0vw03r0.amplifyapp.com').description('Frontend application URL'),
     SMTP_HOST: Joi.string().description('server that will send the emails'),
     SMTP_PORT: Joi.number().description('port to connect to the email server'),
     SMTP_USERNAME: Joi.string().description('username for email server'),

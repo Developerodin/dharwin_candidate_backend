@@ -43,8 +43,15 @@ app.use(mongoSanitize());
 app.use(compression());
 
 // enable cors
-app.use(cors());
-app.options('*', cors());
+const corsOptions = {
+  origin: config.env === 'production' 
+    ? ['https://main.d17v4yz0vw03r0.amplifyapp.com'] 
+    : true, // Allow all origins in development
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // jwt authentication
 app.use(passport.initialize());

@@ -19,7 +19,7 @@ const swaggerDef = {
   },
   servers: [
     {
-      url: `http://localhost:${config.port}/v1`,
+      url: `https://crm-apis.dharwinbusinesssolutions.com/v1`,
     },
   ],
 };

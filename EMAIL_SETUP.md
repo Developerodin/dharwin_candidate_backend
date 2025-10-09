@@ -12,7 +12,7 @@ Add these variables to your `.env` file:
 
 ```env
 # Frontend Configuration
-FRONTEND_URL=http://localhost:3000
+FRONTEND_URL=https://main.d17v4yz0vw03r0.amplifyapp.com
 
 # Email Configuration (SMTP)
 SMTP_HOST=smtp.gmail.com
@@ -85,7 +85,7 @@ const urlParams = new URLSearchParams(window.location.search);
 const token = urlParams.get('token');
 
 // Call backend API to verify
-fetch(`http://localhost:3000/v1/auth/verify-email?token=${token}`, {
+fetch(`https://main.d17v4yz0vw03r0.amplifyapp.com/v1/auth/verify-email?token=${token}`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' }
 })
