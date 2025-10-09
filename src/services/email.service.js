@@ -45,8 +45,8 @@ const sendEmail = async (to, subject, text, html = null) => {
  */
 const sendResetPasswordEmail = async (to, token) => {
   const subject = 'Reset password';
-  const frontendUrl = config.frontendUrl;
-  const resetPasswordUrl = `${frontendUrl}/reset-password?token=${token}`;
+  const backendUrl = 'https://crm-apis.dharwinbusinesssolutions.com';
+  const resetPasswordUrl = `${backendUrl}/reset-password?token=${token}`;
   const text = `Dear user,
 To reset your password, click on this link: ${resetPasswordUrl}
 If you did not request any password resets, then ignore this email.`;
@@ -61,8 +61,8 @@ If you did not request any password resets, then ignore this email.`;
  */
 const sendVerificationEmail = async (to, token) => {
   const subject = 'Email Verification';
-  const frontendUrl = config.frontendUrl;
-  const verificationEmailUrl = `${frontendUrl}/verify-email?token=${token}`;
+  const backendUrl = 'https://crm-apis.dharwinbusinesssolutions.com';
+  const verificationEmailUrl = `${backendUrl}/verify-email?token=${token}`;
   const text = `Dear user,
 To verify your email, click on this link: ${verificationEmailUrl}
 If you did not create an account, then ignore this email.`;
