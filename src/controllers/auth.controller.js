@@ -1,10 +1,10 @@
 import httpStatus from 'http-status';
 import catchAsync from '../utils/catchAsync.js';
-import { createUser } from '../services/user.service.js';
+import { createUser, getUserByEmail } from '../services/user.service.js';
 import { createCandidate } from '../services/candidate.service.js';
 import { generateAuthTokens,generateResetPasswordToken,generateVerifyEmailToken } from '../services/token.service.js';
 import { loginUserWithEmailAndPassword,logout as logout2,refreshAuth,resetPassword as resetPassword2,verifyEmail as verifyEmail2  } from '../services/auth.service.js';
-import { sendResetPasswordEmail,sendVerificationEmail as sendVerificationEmail2  } from '../services/email.service.js';
+import { sendResetPasswordEmail,sendVerificationEmail as sendVerificationEmail2,sendCandidateInvitationEmail  } from '../services/email.service.js';
 // import { authService, userService, tokenService, emailService } from '../services/index.js';
 // import { authService, userService, tokenService, emailService } from '../services';
 
@@ -29,6 +29,10 @@ const register = catchAsync(async (req, res) => {
     
     await createCandidate(user._id, candidateData);
   }
+  
+  // Automatically send verification email after registration
+  const verifyEmailToken = await generateVerifyEmailToken(user);
+  await sendVerificationEmail2(user.email, verifyEmailToken);
   
   res.status(httpStatus.CREATED).send({ user, tokens });
 });
@@ -68,8 +72,20 @@ const sendVerificationEmail = catchAsync(async (req, res) => {
 });
 
 const verifyEmail = catchAsync(async (req, res) => {
-  await verifyEmail2(req.query.token);
+  await verifyEmail2(req.body.token);
   res.status(httpStatus.NO_CONTENT).send();
+});
+
+const sendCandidateInvitation = catchAsync(async (req, res) => {
+  const { email, onboardUrl } = req.body;
+  
+  // Send candidate invitation email
+  await sendCandidateInvitationEmail(email, onboardUrl);
+  
+  res.status(httpStatus.OK).json({
+    message: 'Candidate invitation email sent successfully',
+    email: email
+  });
 });
 
 export {
@@ -81,4 +97,5 @@ export {
   resetPassword,
   sendVerificationEmail,
   verifyEmail,
+  sendCandidateInvitation,
 };

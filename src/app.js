@@ -6,6 +6,8 @@ import compression from 'compression';
 import cors from 'cors';
 import passport from 'passport';
 import httpStatus from 'http-status';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import config from './config/config.js';
 import * as morgan from './config/morgan.js';
 import { jwtStrategy } from './config/passport.js';
@@ -13,6 +15,9 @@ import { authLimiter } from './middlewares/rateLimiter.js';
 import routes from './routes/v1/index.js';
 import { errorConverter, errorHandler } from './middlewares/error.js';
 import ApiError from './utils/ApiError.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 
@@ -44,6 +49,14 @@ app.options('*', cors());
 // jwt authentication
 app.use(passport.initialize());
 passport.use('jwt', jwtStrategy);
+
+// serve static files from public directory (before API routes)
+app.use(express.static(path.join(process.cwd(), 'public')));
+
+// specific route for email verification page
+app.get('/verify-email', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'public/verify-email.html'));
+});
 
 // limit repeated failed requests to auth endpoints
 if (config.env === 'production') {

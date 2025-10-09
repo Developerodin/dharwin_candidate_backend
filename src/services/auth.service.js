@@ -16,6 +16,12 @@ const loginUserWithEmailAndPassword = async (email, password) => {
   if (!user || !(await user.isPasswordMatch(password))) {
     throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect email or password');
   }
+  
+  // Check if email is verified
+  if (!user.isEmailVerified) {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Please verify your email before logging in. Check your inbox for the verification link.');
+  }
+  
   return user;
 };
 

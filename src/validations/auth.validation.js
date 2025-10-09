@@ -56,10 +56,17 @@ const resetPassword = {
 };
 
 const verifyEmail = {
-  query: Joi.object().keys({
+  body: Joi.object().keys({
     token: Joi.string().required(),
   }),
 };
 
-export { register, login, logout, refreshTokens, forgotPassword, resetPassword, verifyEmail };
+const sendCandidateInvitation = {
+  body: Joi.object().keys({
+    email: Joi.string().email().required(),
+    onboardUrl: Joi.string().uri().required(),
+  }),
+};
+
+export { register, login, logout, refreshTokens, forgotPassword, resetPassword, verifyEmail, sendCandidateInvitation };
 
