@@ -12,6 +12,10 @@ router
   .get(auth(), validate(candidateValidation.getCandidates), candidateController.list);
 
 router
+  .route('/admin-create')
+  .post(auth('manageCandidates'), validate(candidateValidation.createCandidateByAdmin), candidateController.createByAdmin);
+
+router
   .route('/:candidateId')
   .get(auth(), validate(candidateValidation.getCandidate), candidateController.get)
   .patch(auth(), validate(candidateValidation.updateCandidate), candidateController.update)

@@ -58,7 +58,13 @@ const createCandidate = {
       owner: Joi.string().custom(objectId), // admin can set
       fullName: Joi.string().required(),
       email: Joi.string().email().required(),
-      phoneNumber: Joi.string().required(),
+      phoneNumber: Joi.string()
+        .pattern(/^[6-9]\d{9}$/)
+        .required()
+        .messages({
+          'string.pattern.base': 'Phone number must be a valid 10-digit Indian mobile number (without +91 prefix)',
+          'any.required': 'Phone number is required'
+        }),
       password: Joi.string().custom(passwordValidator), // only admin will use
       shortBio: Joi.string().allow('', null),
       sevisId: Joi.string().allow('', null),
@@ -101,7 +107,11 @@ const updateCandidate = {
     .keys({
       fullName: Joi.string(),
       email: Joi.string().email(),
-      phoneNumber: Joi.string(),
+      phoneNumber: Joi.string()
+        .pattern(/^[6-9]\d{9}$/)
+        .messages({
+          'string.pattern.base': 'Phone number must be a valid 10-digit Indian mobile number (without +91 prefix)'
+        }),
       shortBio: Joi.string().allow('', null),
       sevisId: Joi.string().allow('', null),
       ead: Joi.string().allow('', null),
@@ -124,7 +134,36 @@ const deleteCandidate = {
   }),
 };
 
-export { createCandidate, getCandidates, getCandidate, updateCandidate, deleteCandidate };
+const createCandidateByAdmin = {
+  body: Joi.object()
+    .keys({
+      fullName: Joi.string().required(),
+      email: Joi.string().email().required(),
+      password: Joi.string().custom(passwordValidator).required(), // Required for admin-created candidates
+      phoneNumber: Joi.string()
+        .pattern(/^[6-9]\d{9}$/)
+        .required()
+        .messages({
+          'string.pattern.base': 'Phone number must be a valid 10-digit Indian mobile number (without +91 prefix)',
+          'any.required': 'Phone number is required'
+        }),
+      shortBio: Joi.string().allow('', null),
+      sevisId: Joi.string().allow('', null),
+      ead: Joi.string().allow('', null),
+      degree: Joi.string().allow('', null),
+      supervisorName: Joi.string().allow('', null),
+      supervisorContact: Joi.string().allow('', null),
+      qualifications: Joi.array().items(qualification),
+      experiences: Joi.array().items(experience),
+      documents: Joi.array().items(document),
+      skills: Joi.array().items(skill),
+      socialLinks: Joi.array().items(socialLink),
+      salarySlips: Joi.array().items(salarySlip),
+    })
+    .required(),
+};
+
+export { createCandidate, createCandidateByAdmin, getCandidates, getCandidate, updateCandidate, deleteCandidate };
 
 const exportCandidate = {
   params: Joi.object().keys({

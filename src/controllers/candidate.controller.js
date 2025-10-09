@@ -2,12 +2,22 @@ import httpStatus from 'http-status';
 import pick from '../utils/pick.js';
 import catchAsync from '../utils/catchAsync.js';
 import ApiError from '../utils/ApiError.js';
-import { createCandidate, queryCandidates, getCandidateById, updateCandidateById, deleteCandidateById } from '../services/candidate.service.js';
+import { createCandidate, createCandidateByAdmin, queryCandidates, getCandidateById, updateCandidateById, deleteCandidateById } from '../services/candidate.service.js';
 import { sendEmail } from '../services/email.service.js';
 
 const create = catchAsync(async (req, res) => {
   const ownerId = req.user.role === 'admin' && req.body.owner ? req.body.owner : req.user.id;
   const candidate = await createCandidate(ownerId, req.body);
+  res.status(httpStatus.CREATED).send(candidate);
+});
+
+const createByAdmin = catchAsync(async (req, res) => {
+  // Only admins can use this endpoint
+  if (req.user.role !== 'admin') {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Only admin can create candidates with auto user registration');
+  }
+  
+  const candidate = await createCandidateByAdmin(req.user.id, req.body);
   res.status(httpStatus.CREATED).send(candidate);
 });
 
@@ -45,7 +55,7 @@ const remove = catchAsync(async (req, res) => {
   res.status(httpStatus.NO_CONTENT).send();
 });
 
-export { create, list, get, update, remove };
+export { create, createByAdmin, list, get, update, remove };
 
 const exportProfile = catchAsync(async (req, res) => {
   const candidate = await getCandidateById(req.params.candidateId);

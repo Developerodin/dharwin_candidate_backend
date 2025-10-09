@@ -82,6 +82,44 @@ const createCandidate = async (ownerId, payload) => {
   return candidate;
 };
 
+const createCandidateByAdmin = async (adminId, payload) => {
+  // First, create or get the user for the candidate
+  let candidateUserId;
+  const existingUser = await getUserByEmail(payload.email);
+  
+  if (existingUser) {
+    // If user already exists, use their ID
+    candidateUserId = existingUser.id;
+  } else {
+    // Create new user with email verification bypassed (admin-created)
+    const user = await createUser({
+      name: payload.fullName,
+      email: payload.email,
+      password: payload.password,
+      role: 'user',
+      isEmailVerified: true, // Admin-created users are auto-verified
+    });
+    candidateUserId = user.id;
+  }
+  
+  // Extract password from payload (don't store it in candidate)
+  const { password, ...candidateData } = payload;
+  
+  // Create candidate with the new user as owner and admin as adminId
+  const candidate = await Candidate.create({
+    owner: candidateUserId,
+    adminId: adminId,
+    ...candidateData
+  });
+  
+  // Calculate and update profile completion percentage and completion status
+  candidate.isProfileCompleted = calculateProfileCompletion(candidate);
+  candidate.isCompleted = candidate.isProfileCompleted === 100;
+  await candidate.save();
+  
+  return candidate;
+};
+
 const queryCandidates = async (filter, options) => {
   // reuse paginate plugin interface from existing codebase (limit, page, sortBy)
   return Candidate.paginate(filter, options);
@@ -122,6 +160,7 @@ const deleteCandidateById = async (id) => {
 
 export {
   createCandidate,
+  createCandidateByAdmin,
   queryCandidates,
   getCandidateById,
   updateCandidateById,
