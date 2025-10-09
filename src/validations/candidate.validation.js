@@ -56,6 +56,14 @@ const createCandidate = {
   body: Joi.object()
     .keys({
       owner: Joi.string().custom(objectId), // admin can set
+      role: Joi.string().valid('user').optional(), // role for candidate
+      adminId: Joi.when('role', {
+        is: 'user',
+        then: Joi.string().required().custom(objectId).messages({
+          'any.required': 'Admin ID is required when role is user'
+        }),
+        otherwise: Joi.forbidden()
+      }),
       fullName: Joi.string().required(),
       email: Joi.string().email().required(),
       phoneNumber: Joi.string()

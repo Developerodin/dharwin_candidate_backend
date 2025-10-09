@@ -1,7 +1,7 @@
 import httpStatus from 'http-status';
 import Candidate from '../models/candidate.model.js';
 import User from '../models/user.model.js';
-import { createUser, getUserByEmail } from './user.service.js';
+import { createUser, getUserByEmail, updateUserById } from './user.service.js';
 import ApiError from '../utils/ApiError.js';
 
 const isOwnerOrAdmin = (user, candidate) => {
@@ -52,9 +52,24 @@ const calculateProfileCompletion = (candidate) => {
   return completion;
 };
 
+const hasAllRequiredData = (candidateData) => {
+  // Check if at least one qualification is provided
+  const hasQualifications = candidateData.qualifications && 
+    candidateData.qualifications.length > 0;
+  
+  // Check if at least one experience is provided
+  const hasExperiences = candidateData.experiences && 
+    candidateData.experiences.length > 0;
+  
+  // Auto-verify email if both qualifications and experiences are provided
+  return hasQualifications && hasExperiences;
+};
+
 const createCandidate = async (ownerId, payload) => {
   // If admin provided password, create or reuse a user for candidate's email
   let resolvedOwnerId = ownerId;
+  let shouldAutoVerifyEmail = false;
+  
   if (payload.password && payload.email) {
     const existing = await getUserByEmail(payload.email);
     if (existing) {
@@ -64,58 +79,36 @@ const createCandidate = async (ownerId, payload) => {
         name: payload.fullName || payload.email,
         email: payload.email,
         password: payload.password,
-        role: 'user',
+        role: payload.role || 'user',
+        adminId: payload.adminId,
       });
       resolvedOwnerId = user.id;
     }
   }
+  
+  // Check if all required data is provided for auto email verification
+  if (hasAllRequiredData(payload)) {
+    shouldAutoVerifyEmail = true;
+  }
+  
   const { password, ...rest } = payload; // never store password on candidate
   
   // Create candidate with calculated profile completion
-  const candidate = await Candidate.create({ owner: resolvedOwnerId, ...rest });
-  
-  // Calculate and update profile completion percentage and completion status
-  candidate.isProfileCompleted = calculateProfileCompletion(candidate);
-  candidate.isCompleted = candidate.isProfileCompleted === 100;
-  await candidate.save();
-  
-  return candidate;
-};
-
-const createCandidateByAdmin = async (adminId, payload) => {
-  // First, create or get the user for the candidate
-  let candidateUserId;
-  const existingUser = await getUserByEmail(payload.email);
-  
-  if (existingUser) {
-    // If user already exists, use their ID
-    candidateUserId = existingUser.id;
-  } else {
-    // Create new user with email verification bypassed (admin-created)
-    const user = await createUser({
-      name: payload.fullName,
-      email: payload.email,
-      password: payload.password,
-      role: 'user',
-      isEmailVerified: true, // Admin-created users are auto-verified
-    });
-    candidateUserId = user.id;
-  }
-  
-  // Extract password from payload (don't store it in candidate)
-  const { password, ...candidateData } = payload;
-  
-  // Create candidate with the new user as owner and admin as adminId
-  const candidate = await Candidate.create({
-    owner: candidateUserId,
-    adminId: adminId,
-    ...candidateData
+  const candidate = await Candidate.create({ 
+    owner: resolvedOwnerId, 
+    adminId: payload.adminId || resolvedOwnerId, // Use provided adminId or default to owner
+    ...rest 
   });
   
   // Calculate and update profile completion percentage and completion status
   candidate.isProfileCompleted = calculateProfileCompletion(candidate);
   candidate.isCompleted = candidate.isProfileCompleted === 100;
   await candidate.save();
+  
+  // Auto-verify email if all required data is provided
+  if (shouldAutoVerifyEmail) {
+    await updateUserById(resolvedOwnerId, { isEmailVerified: true });
+  }
   
   return candidate;
 };
@@ -160,13 +153,13 @@ const deleteCandidateById = async (id) => {
 
 export {
   createCandidate,
-  createCandidateByAdmin,
   queryCandidates,
   getCandidateById,
   updateCandidateById,
   deleteCandidateById,
   isOwnerOrAdmin,
   calculateProfileCompletion,
+  hasAllRequiredData,
 };
 
 
