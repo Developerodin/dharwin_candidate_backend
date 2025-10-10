@@ -4,6 +4,10 @@ import { objectId, password as passwordValidator } from './custom.validation.js'
 const document = Joi.object({
   label: Joi.string().required(),
   url: Joi.string().uri().required(),
+  key: Joi.string().optional().trim(),
+  originalName: Joi.string().optional().trim(),
+  size: Joi.number().optional().integer().min(0),
+  mimeType: Joi.string().optional().trim(),
 });
 
 const qualification = Joi.object({
@@ -50,6 +54,10 @@ const salarySlip = Joi.object({
     'string.uri': 'Document URL must be a valid URL',
     'any.required': 'Document URL is required'
   }),
+  key: Joi.string().optional().trim(),
+  originalName: Joi.string().optional().trim(),
+  size: Joi.number().optional().integer().min(0),
+  mimeType: Joi.string().optional().trim(),
 });
 
 const createCandidate = {

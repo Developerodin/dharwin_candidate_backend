@@ -29,6 +29,10 @@ const documentSchema = new mongoose.Schema(
   {
     label: { type: String, required: true, trim: true },
     url: { type: String, required: true, trim: true },
+    key: { type: String, trim: true }, // S3 file key
+    originalName: { type: String, trim: true }, // Original filename
+    size: { type: Number }, // File size in bytes
+    mimeType: { type: String, trim: true }, // File MIME type
   },
   { _id: false }
 );
@@ -55,6 +59,10 @@ const salarySlipSchema = new mongoose.Schema(
     month: { type: String, required: true, trim: true }, // e.g., 'January', 'Feb', '03'
     year: { type: Number, required: true, min: 1900, max: 2100 },
     documentUrl: { type: String, required: true, trim: true },
+    key: { type: String, trim: true }, // S3 file key
+    originalName: { type: String, trim: true }, // Original filename
+    size: { type: Number }, // File size in bytes
+    mimeType: { type: String, trim: true }, // File MIME type
   },
   { _id: false }
 );

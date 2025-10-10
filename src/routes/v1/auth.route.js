@@ -292,3 +292,125 @@ export default router;
  *               code: 401
  *               message: verify email failed
  */
+
+/**
+ * @swagger
+ * /auth/send-candidate-invitation:
+ *   post:
+ *     summary: Send candidate invitation email(s)
+ *     description: Send invitation email(s) to candidate(s) with onboarding link. Supports both single and bulk invitations.
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             oneOf:
+ *               - type: object
+ *                 description: Single invitation
+ *                 required:
+ *                   - email
+ *                   - onboardUrl
+ *                 properties:
+ *                   email:
+ *                     type: string
+ *                     format: email
+ *                     description: Candidate's email address
+ *                   onboardUrl:
+ *                     type: string
+ *                     format: uri
+ *                     description: Onboarding URL for the candidate
+ *                 example:
+ *                   email: candidate@example.com
+ *                   onboardUrl: https://app.example.com/onboard?token=abc123
+ *               - type: object
+ *                 description: Bulk invitations
+ *                 required:
+ *                   - invitations
+ *                 properties:
+ *                   invitations:
+ *                     type: array
+ *                     minItems: 1
+ *                     maxItems: 50
+ *                     items:
+ *                       type: object
+ *                       required:
+ *                         - email
+ *                         - onboardUrl
+ *                       properties:
+ *                         email:
+ *                           type: string
+ *                           format: email
+ *                           description: Candidate's email address
+ *                         onboardUrl:
+ *                           type: string
+ *                           format: uri
+ *                           description: Onboarding URL for the candidate
+ *                 example:
+ *                   invitations:
+ *                     - email: candidate1@example.com
+ *                       onboardUrl: https://app.example.com/onboard?token=abc123
+ *                     - email: candidate2@example.com
+ *                       onboardUrl: https://app.example.com/onboard?token=def456
+ *     responses:
+ *       "200":
+ *         description: Invitation(s) sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               oneOf:
+ *                 - type: object
+ *                   description: Single invitation response
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                   example:
+ *                     message: Candidate invitation email sent successfully
+ *                     email: candidate@example.com
+ *                 - type: object
+ *                   description: Bulk invitation response
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                     results:
+ *                       type: object
+ *                       properties:
+ *                         successful:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               email:
+ *                                 type: string
+ *                               onboardUrl:
+ *                                 type: string
+ *                         failed:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               email:
+ *                                 type: string
+ *                               onboardUrl:
+ *                                 type: string
+ *                               error:
+ *                                 type: string
+ *                         total:
+ *                           type: number
+ *                   example:
+ *                     message: Bulk invitation processing completed. 2 successful, 0 failed.
+ *                     results:
+ *                       successful:
+ *                         - email: candidate1@example.com
+ *                           onboardUrl: https://app.example.com/onboard?token=abc123
+ *                         - email: candidate2@example.com
+ *                           onboardUrl: https://app.example.com/onboard?token=def456
+ *                       failed: []
+ *                       total: 2
+ *       "400":
+ *         description: Bad request - Invalid email, URL, or too many invitations
+ *       "500":
+ *         description: Internal server error
+ */

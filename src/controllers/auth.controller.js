@@ -77,15 +77,50 @@ const verifyEmail = catchAsync(async (req, res) => {
 });
 
 const sendCandidateInvitation = catchAsync(async (req, res) => {
-  const { email, onboardUrl } = req.body;
+  const { email, onboardUrl, invitations } = req.body;
   
-  // Send candidate invitation email
-  await sendCandidateInvitationEmail(email, onboardUrl);
-  
-  res.status(httpStatus.OK).json({
-    message: 'Candidate invitation email sent successfully',
-    email: email
-  });
+  // Check if it's a bulk invitation request
+  if (invitations && Array.isArray(invitations)) {
+    // Handle bulk invitations
+    const results = {
+      successful: [],
+      failed: [],
+      total: invitations.length
+    };
+    
+    // Process invitations in parallel for better performance
+    const emailPromises = invitations.map(async (invitation) => {
+      try {
+        await sendCandidateInvitationEmail(invitation.email, invitation.onboardUrl);
+        results.successful.push({
+          email: invitation.email,
+          onboardUrl: invitation.onboardUrl
+        });
+      } catch (error) {
+        results.failed.push({
+          email: invitation.email,
+          onboardUrl: invitation.onboardUrl,
+          error: error.message
+        });
+      }
+    });
+    
+    // Wait for all emails to be processed
+    await Promise.allSettled(emailPromises);
+    
+    res.status(httpStatus.OK).json({
+      message: `Bulk invitation processing completed. ${results.successful.length} successful, ${results.failed.length} failed.`,
+      results: results
+    });
+  } else {
+    // Handle single invitation
+    await sendCandidateInvitationEmail(email, onboardUrl);
+    
+    res.status(httpStatus.OK).json({
+      message: 'Candidate invitation email sent successfully',
+      email: email
+    });
+  }
 });
 
 export {

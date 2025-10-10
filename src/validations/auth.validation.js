@@ -62,9 +62,26 @@ const verifyEmail = {
 };
 
 const sendCandidateInvitation = {
-  body: Joi.object().keys({
-    email: Joi.string().email().required(),
-    onboardUrl: Joi.string().uri().required(),
+  body: Joi.alternatives().try(
+    // Single invitation format
+    Joi.object().keys({
+      email: Joi.string().email().required(),
+      onboardUrl: Joi.string().uri().required(),
+    }),
+    // Bulk invitations format
+    Joi.object().keys({
+      invitations: Joi.array().items(
+        Joi.object().keys({
+          email: Joi.string().email().required(),
+          onboardUrl: Joi.string().uri().required(),
+        })
+      ).min(1).max(50).required().messages({
+        'array.min': 'At least one invitation is required',
+        'array.max': 'Maximum 50 invitations can be sent at once'
+      }),
+    })
+  ).messages({
+    'alternatives.match': 'Request body must contain either single invitation (email, onboardUrl) or bulk invitations (invitations array)'
   }),
 };
 
