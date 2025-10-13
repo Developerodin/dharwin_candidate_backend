@@ -66,51 +66,101 @@ const hasAllRequiredData = (candidateData) => {
 };
 
 const createCandidate = async (ownerId, payload) => {
-  // If admin provided password, create or reuse a user for candidate's email
-  let resolvedOwnerId = ownerId;
-  let shouldAutoVerifyEmail = false;
+  // Check if payload is an array (multiple candidates) or single object
+  const isMultiple = Array.isArray(payload);
+  const candidatesData = isMultiple ? payload : [payload];
   
-  if (payload.password && payload.email) {
-    const existing = await getUserByEmail(payload.email);
-    if (existing) {
-      resolvedOwnerId = existing.id;
-    } else {
-      const user = await createUser({
-        name: payload.fullName || payload.email,
-        email: payload.email,
-        password: payload.password,
-        role: payload.role || 'user',
-        adminId: payload.adminId,
+  const results = {
+    successful: [],
+    failed: [],
+    summary: {
+      total: candidatesData.length,
+      successful: 0,
+      failed: 0
+    }
+  };
+
+  // Process each candidate
+  for (let i = 0; i < candidatesData.length; i++) {
+    const candidateData = candidatesData[i];
+    
+    try {
+      // If admin provided password, create or reuse a user for candidate's email
+      let resolvedOwnerId = ownerId;
+      let shouldAutoVerifyEmail = false;
+      
+      if (candidateData.password && candidateData.email) {
+        const existing = await getUserByEmail(candidateData.email);
+        if (existing) {
+          resolvedOwnerId = existing.id;
+        } else {
+          const user = await createUser({
+            name: candidateData.fullName || candidateData.email,
+            email: candidateData.email,
+            password: candidateData.password,
+            role: candidateData.role || 'user',
+            adminId: candidateData.adminId,
+          });
+          resolvedOwnerId = user.id;
+        }
+      }
+      
+      // Check if all required data is provided for auto email verification
+      if (hasAllRequiredData(candidateData)) {
+        shouldAutoVerifyEmail = true;
+      }
+      
+      const { password, ...rest } = candidateData; // never store password on candidate
+      
+      // Create candidate with calculated profile completion
+      const candidate = await Candidate.create({ 
+        owner: resolvedOwnerId, 
+        adminId: candidateData.adminId || resolvedOwnerId, // Use provided adminId or default to owner
+        ...rest 
       });
-      resolvedOwnerId = user.id;
+      
+      // Calculate and update profile completion percentage and completion status
+      candidate.isProfileCompleted = calculateProfileCompletion(candidate);
+      candidate.isCompleted = candidate.isProfileCompleted === 100;
+      await candidate.save();
+      
+      // Auto-verify email if all required data is provided
+      if (shouldAutoVerifyEmail) {
+        await updateUserById(resolvedOwnerId, { isEmailVerified: true });
+      }
+      
+      results.successful.push({
+        index: i,
+        candidate: candidate,
+        message: 'Candidate created successfully'
+      });
+      results.summary.successful++;
+      
+    } catch (error) {
+      results.failed.push({
+        index: i,
+        candidateData: {
+          fullName: candidateData.fullName,
+          email: candidateData.email
+        },
+        error: error.message,
+        message: `Failed to create candidate: ${error.message}`
+      });
+      results.summary.failed++;
     }
   }
-  
-  // Check if all required data is provided for auto email verification
-  if (hasAllRequiredData(payload)) {
-    shouldAutoVerifyEmail = true;
+
+  // Return format based on input type
+  if (isMultiple) {
+    return results;
+  } else {
+    // For single candidate, return the candidate directly if successful, or throw error if failed
+    if (results.summary.successful === 1) {
+      return results.successful[0].candidate;
+    } else {
+      throw new ApiError(httpStatus.BAD_REQUEST, results.failed[0].message);
+    }
   }
-  
-  const { password, ...rest } = payload; // never store password on candidate
-  
-  // Create candidate with calculated profile completion
-  const candidate = await Candidate.create({ 
-    owner: resolvedOwnerId, 
-    adminId: payload.adminId || resolvedOwnerId, // Use provided adminId or default to owner
-    ...rest 
-  });
-  
-  // Calculate and update profile completion percentage and completion status
-  candidate.isProfileCompleted = calculateProfileCompletion(candidate);
-  candidate.isCompleted = candidate.isProfileCompleted === 100;
-  await candidate.save();
-  
-  // Auto-verify email if all required data is provided
-  if (shouldAutoVerifyEmail) {
-    await updateUserById(resolvedOwnerId, { isEmailVerified: true });
-  }
-  
-  return candidate;
 };
 
 const queryCandidates = async (filter, options) => {
@@ -151,12 +201,88 @@ const deleteCandidateById = async (id) => {
   return candidate;
 };
 
+const exportAllCandidates = async (filters = {}) => {
+  // Get all candidates with optional filters
+  const candidates = await Candidate.find(filters)
+    .populate('owner', 'name email')
+    .populate('adminId', 'name email')
+    .sort({ createdAt: -1 });
+
+  // Format candidates data for export
+  const exportData = candidates.map(candidate => ({
+    id: candidate.id,
+    fullName: candidate.fullName,
+    email: candidate.email,
+    phoneNumber: candidate.phoneNumber,
+    shortBio: candidate.shortBio || '',
+    sevisId: candidate.sevisId || '',
+    ead: candidate.ead || '',
+    degree: candidate.degree || '',
+    supervisorName: candidate.supervisorName || '',
+    supervisorContact: candidate.supervisorContact || '',
+    owner: candidate.owner ? candidate.owner.name : '',
+    ownerEmail: candidate.owner ? candidate.owner.email : '',
+    adminId: candidate.adminId ? candidate.adminId.name : '',
+    adminEmail: candidate.adminId ? candidate.adminId.email : '',
+    isProfileCompleted: candidate.isProfileCompleted,
+    isCompleted: candidate.isCompleted,
+    createdAt: candidate.createdAt,
+    updatedAt: candidate.updatedAt,
+    qualifications: candidate.qualifications.map(q => ({
+      degree: q.degree,
+      institute: q.institute,
+      location: q.location || '',
+      startYear: q.startYear || '',
+      endYear: q.endYear || '',
+      description: q.description || ''
+    })),
+    experiences: candidate.experiences.map(e => ({
+      company: e.company,
+      role: e.role,
+      startDate: e.startDate ? new Date(e.startDate).toISOString().split('T')[0] : '',
+      endDate: e.endDate ? new Date(e.endDate).toISOString().split('T')[0] : '',
+      description: e.description || ''
+    })),
+    skills: candidate.skills.map(s => ({
+      name: s.name,
+      level: s.level,
+      category: s.category || ''
+    })),
+    socialLinks: candidate.socialLinks.map(sl => ({
+      platform: sl.platform,
+      url: sl.url
+    })),
+    documents: candidate.documents.map(d => ({
+      label: d.label || '',
+      url: d.url || '',
+      originalName: d.originalName || '',
+      size: d.size || '',
+      mimeType: d.mimeType || ''
+    })),
+    salarySlips: candidate.salarySlips.map(ss => ({
+      month: ss.month || '',
+      year: ss.year || '',
+      documentUrl: ss.documentUrl || '',
+      originalName: ss.originalName || '',
+      size: ss.size || '',
+      mimeType: ss.mimeType || ''
+    }))
+  }));
+
+  return {
+    totalCandidates: exportData.length,
+    exportedAt: new Date().toISOString(),
+    data: exportData
+  };
+};
+
 export {
   createCandidate,
   queryCandidates,
   getCandidateById,
   updateCandidateById,
   deleteCandidateById,
+  exportAllCandidates,
   isOwnerOrAdmin,
   calculateProfileCompletion,
   hasAllRequiredData,

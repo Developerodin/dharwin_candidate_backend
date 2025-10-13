@@ -2,8 +2,8 @@ import Joi from 'joi';
 import { objectId, password as passwordValidator } from './custom.validation.js';
 
 const document = Joi.object({
-  label: Joi.string().required(),
-  url: Joi.string().uri().required(),
+  label: Joi.string().optional().trim(),
+  url: Joi.string().uri().optional(),
   key: Joi.string().optional().trim(),
   originalName: Joi.string().optional().trim(),
   size: Joi.number().optional().integer().min(0),
@@ -39,63 +39,63 @@ const socialLink = Joi.object({
 });
 
 const salarySlip = Joi.object({
-  month: Joi.string().required().trim().messages({
-    'string.empty': 'Month is required',
-    'any.required': 'Month is required'
-  }),
-  year: Joi.number().integer().min(1900).max(2100).required().messages({
-    'number.base': 'Year must be a number',
-    'number.integer': 'Year must be an integer',
-    'number.min': 'Year must be at least 1900',
-    'number.max': 'Year must be at most 2100',
-    'any.required': 'Year is required'
-  }),
-  documentUrl: Joi.string().uri().required().messages({
-    'string.uri': 'Document URL must be a valid URL',
-    'any.required': 'Document URL is required'
-  }),
+  month: Joi.string().optional().trim(),
+  year: Joi.number().integer().min(1900).max(2100).optional(),
+  documentUrl: Joi.string().uri().optional(),
   key: Joi.string().optional().trim(),
   originalName: Joi.string().optional().trim(),
   size: Joi.number().optional().integer().min(0),
   mimeType: Joi.string().optional().trim(),
 });
 
+const singleCandidateSchema = Joi.object().keys({
+  owner: Joi.string().custom(objectId), // admin can set
+  role: Joi.string().valid('user').optional(), // role for candidate
+  adminId: Joi.when('role', {
+    is: 'user',
+    then: Joi.string().required().custom(objectId).messages({
+      'any.required': 'Admin ID is required when role is user'
+    }),
+    otherwise: Joi.forbidden()
+  }),
+  fullName: Joi.string().required(),
+  email: Joi.string().email().required(),
+  phoneNumber: Joi.string()
+    .pattern(/^[6-9]\d{9}$/)
+    .required()
+    .messages({
+      'string.pattern.base': 'Phone number must be a valid 10-digit Indian mobile number (without +91 prefix)',
+      'any.required': 'Phone number is required'
+    }),
+  password: Joi.string().custom(passwordValidator), // only admin will use
+  shortBio: Joi.string().allow('', null),
+  sevisId: Joi.string().allow('', null),
+  ead: Joi.string().allow('', null),
+  degree: Joi.string().allow('', null),
+  supervisorName: Joi.string().allow('', null),
+  supervisorContact: Joi.string().allow('', null),
+  qualifications: Joi.array().items(qualification),
+  experiences: Joi.array().items(experience),
+  documents: Joi.array().items(document),
+  skills: Joi.array().items(skill),
+  socialLinks: Joi.array().items(socialLink),
+  salarySlips: Joi.array().items(salarySlip),
+});
+
 const createCandidate = {
-  body: Joi.object()
-    .keys({
-      owner: Joi.string().custom(objectId), // admin can set
-      role: Joi.string().valid('user').optional(), // role for candidate
-      adminId: Joi.when('role', {
-        is: 'user',
-        then: Joi.string().required().custom(objectId).messages({
-          'any.required': 'Admin ID is required when role is user'
-        }),
-        otherwise: Joi.forbidden()
-      }),
-      fullName: Joi.string().required(),
-      email: Joi.string().email().required(),
-      phoneNumber: Joi.string()
-        .pattern(/^[6-9]\d{9}$/)
-        .required()
-        .messages({
-          'string.pattern.base': 'Phone number must be a valid 10-digit Indian mobile number (without +91 prefix)',
-          'any.required': 'Phone number is required'
-        }),
-      password: Joi.string().custom(passwordValidator), // only admin will use
-      shortBio: Joi.string().allow('', null),
-      sevisId: Joi.string().allow('', null),
-      ead: Joi.string().allow('', null),
-      degree: Joi.string().allow('', null),
-      supervisorName: Joi.string().allow('', null),
-      supervisorContact: Joi.string().allow('', null),
-      qualifications: Joi.array().items(qualification),
-      experiences: Joi.array().items(experience),
-      documents: Joi.array().items(document),
-      skills: Joi.array().items(skill),
-      socialLinks: Joi.array().items(socialLink),
-      salarySlips: Joi.array().items(salarySlip),
-    })
-    .required(),
+  body: Joi.alternatives().try(
+    // Single candidate object
+    singleCandidateSchema,
+    // Array of candidates (for bulk creation)
+    Joi.array()
+      .items(singleCandidateSchema)
+      .min(1)
+      .max(50) // Limit to 50 candidates at once
+      .messages({
+        'array.min': 'At least one candidate is required',
+        'array.max': 'Cannot create more than 50 candidates at once'
+      })
+  ).required(),
 };
 
 const getCandidates = {
@@ -190,6 +190,17 @@ const exportCandidate = {
   }),
 };
 
-export { exportCandidate };
+const exportAllCandidates = {
+  query: Joi.object().keys({
+    owner: Joi.string().custom(objectId),
+    fullName: Joi.string(),
+    email: Joi.string().email(),
+  }),
+  body: Joi.object().keys({
+    email: Joi.string().email().optional(),
+  }),
+};
+
+export { exportCandidate, exportAllCandidates };
 
 

@@ -11,6 +11,11 @@ router
   .post(auth(), validate(candidateValidation.createCandidate), candidateController.create)
   .get(auth(), validate(candidateValidation.getCandidates), candidateController.list);
 
+// Export all candidates route - MUST come before /:candidateId route
+router
+  .route('/export')
+  .post(auth('manageCandidates'), validate(candidateValidation.exportAllCandidates), candidateController.exportAll);
+
 router
   .route('/:candidateId')
   .get(auth(), validate(candidateValidation.getCandidate), candidateController.get)

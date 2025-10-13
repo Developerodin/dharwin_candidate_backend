@@ -27,8 +27,8 @@ const experienceSchema = new mongoose.Schema(
 
 const documentSchema = new mongoose.Schema(
   {
-    label: { type: String, required: true, trim: true },
-    url: { type: String, required: true, trim: true },
+    label: { type: String, trim: true },
+    url: { type: String, trim: true },
     key: { type: String, trim: true }, // S3 file key
     originalName: { type: String, trim: true }, // Original filename
     size: { type: Number }, // File size in bytes
@@ -56,9 +56,9 @@ const socialLinkSchema = new mongoose.Schema(
 
 const salarySlipSchema = new mongoose.Schema(
   {
-    month: { type: String, required: true, trim: true }, // e.g., 'January', 'Feb', '03'
-    year: { type: Number, required: true, min: 1900, max: 2100 },
-    documentUrl: { type: String, required: true, trim: true },
+    month: { type: String, trim: true }, // e.g., 'January', 'Feb', '03'
+    year: { type: Number, min: 1900, max: 2100 },
+    documentUrl: { type: String, trim: true },
     key: { type: String, trim: true }, // S3 file key
     originalName: { type: String, trim: true }, // Original filename
     size: { type: Number }, // File size in bytes

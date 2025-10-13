@@ -2,13 +2,45 @@ import httpStatus from 'http-status';
 import pick from '../utils/pick.js';
 import catchAsync from '../utils/catchAsync.js';
 import ApiError from '../utils/ApiError.js';
-import { createCandidate, queryCandidates, getCandidateById, updateCandidateById, deleteCandidateById } from '../services/candidate.service.js';
+import { createCandidate, queryCandidates, getCandidateById, updateCandidateById, deleteCandidateById, exportAllCandidates } from '../services/candidate.service.js';
 import { sendEmail } from '../services/email.service.js';
 
 const create = catchAsync(async (req, res) => {
   const ownerId = req.user.role === 'admin' && req.body.owner ? req.body.owner : req.user.id;
-  const candidate = await createCandidate(ownerId, req.body);
-  res.status(httpStatus.CREATED).send(candidate);
+  const isMultiple = Array.isArray(req.body);
+  
+  // For multiple candidates, only admins can create them
+  if (isMultiple && req.user.role !== 'admin') {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Only admin can create multiple candidates');
+  }
+  
+  const result = await createCandidate(ownerId, req.body);
+  
+  if (isMultiple) {
+    // Handle multiple candidates response
+    if (result.summary.failed === 0) {
+      // All candidates created successfully
+      res.status(httpStatus.CREATED).send({
+        message: 'All candidates created successfully',
+        ...result
+      });
+    } else if (result.summary.successful === 0) {
+      // All candidates failed
+      res.status(httpStatus.BAD_REQUEST).send({
+        message: 'Failed to create any candidates',
+        ...result
+      });
+    } else {
+      // Partial success
+      res.status(httpStatus.MULTI_STATUS).send({
+        message: 'Some candidates created successfully, some failed',
+        ...result
+      });
+    }
+  } else {
+    // Handle single candidate response (existing behavior)
+    res.status(httpStatus.CREATED).send(result);
+  }
 });
 
 const list = catchAsync(async (req, res) => {
@@ -79,6 +111,102 @@ const exportProfile = catchAsync(async (req, res) => {
   res.status(httpStatus.NO_CONTENT).send();
 });
 
-export { exportProfile };
+const exportAll = catchAsync(async (req, res) => {
+  // Only admins can export all candidates
+  if (req.user.role !== 'admin') {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Only admin can export all candidates');
+  }
+
+  const { email } = req.body;
+  
+  // Get filters from query parameters
+  const filters = pick(req.query, ['owner', 'fullName', 'email']);
+  
+  // Export all candidates
+  const exportData = await exportAllCandidates(filters);
+  
+  if (email) {
+    // Send via email
+    const subject = `All Candidates Export - ${exportData.totalCandidates} candidates`;
+    const csvContent = generateCSVFormat(exportData);
+    
+    await sendEmail(email, subject, csvContent);
+    
+    res.status(httpStatus.OK).send({
+      message: `CSV export sent successfully to ${email}`,
+      totalCandidates: exportData.totalCandidates,
+      exportedAt: exportData.exportedAt
+    });
+  } else {
+    // Return CSV data directly
+    const csvContent = generateCSVFormat(exportData);
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="candidates-export-${new Date().toISOString().split('T')[0]}.csv"`);
+    res.status(httpStatus.OK).send(csvContent);
+  }
+});
+
+
+// Helper function to generate CSV format
+const generateCSVFormat = (exportData) => {
+  const headers = [
+    'ID',
+    'Full Name',
+    'Email',
+    'Phone Number',
+    'Short Bio',
+    'SEVIS ID',
+    'EAD',
+    'Degree',
+    'Supervisor Name',
+    'Supervisor Contact',
+    'Owner',
+    'Owner Email',
+    'Admin',
+    'Admin Email',
+    'Profile Completion %',
+    'Status',
+    'Created At',
+    'Updated At',
+    'Qualifications',
+    'Experiences',
+    'Skills',
+    'Social Links',
+    'Documents',
+    'Salary Slips'
+  ];
+
+  const rows = exportData.data.map(candidate => [
+    candidate.id,
+    `"${candidate.fullName || ''}"`,
+    candidate.email || '',
+    candidate.phoneNumber || '',
+    `"${(candidate.shortBio || '').replace(/"/g, '""')}"`,
+    candidate.sevisId || '',
+    candidate.ead || '',
+    `"${candidate.degree || ''}"`,
+    `"${candidate.supervisorName || ''}"`,
+    candidate.supervisorContact || '',
+    `"${candidate.owner || ''}"`,
+    candidate.ownerEmail || '',
+    `"${candidate.adminId || ''}"`,
+    candidate.adminEmail || '',
+    candidate.isProfileCompleted || 0,
+    candidate.isCompleted ? 'Completed' : 'Incomplete',
+    new Date(candidate.createdAt).toLocaleDateString(),
+    new Date(candidate.updatedAt).toLocaleDateString(),
+    `"${candidate.qualifications.map(q => `${q.degree} - ${q.institute}`).join('; ')}"`,
+    `"${candidate.experiences.map(e => `${e.role} @ ${e.company}`).join('; ')}"`,
+    `"${candidate.skills.map(s => `${s.name} (${s.level})`).join('; ')}"`,
+    `"${candidate.socialLinks.map(sl => `${sl.platform}: ${sl.url}`).join('; ')}"`,
+    `"${candidate.documents.map(d => d.label || d.originalName).join('; ')}"`,
+    `"${candidate.salarySlips.map(ss => `${ss.month} ${ss.year}`).join('; ')}"`
+  ]);
+
+  const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+  return csvContent;
+};
+
+export { exportProfile, exportAll };
 
 
