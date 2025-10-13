@@ -203,4 +203,45 @@ const exportAllCandidates = {
 
 export { exportCandidate, exportAllCandidates };
 
+// Salary slip management validations
+const addSalarySlip = {
+  params: Joi.object().keys({
+    candidateId: Joi.string().custom(objectId).required(),
+  }),
+  body: Joi.object().keys({
+    month: Joi.string().required().trim(),
+    year: Joi.number().required().integer().min(1900).max(2100),
+    documentUrl: Joi.string().uri().required(),
+    key: Joi.string().required().trim(),
+    originalName: Joi.string().required().trim(),
+    size: Joi.number().required().integer().min(0),
+    mimeType: Joi.string().required().trim(),
+  }).required(),
+};
+
+const updateSalarySlip = {
+  params: Joi.object().keys({
+    candidateId: Joi.string().custom(objectId).required(),
+    salarySlipIndex: Joi.number().integer().min(0).required(),
+  }),
+  body: Joi.object().keys({
+    month: Joi.string().optional().trim(),
+    year: Joi.number().optional().integer().min(1900).max(2100),
+    documentUrl: Joi.string().uri().optional(),
+    key: Joi.string().optional().trim(),
+    originalName: Joi.string().optional().trim(),
+    size: Joi.number().optional().integer().min(0),
+    mimeType: Joi.string().optional().trim(),
+  }).min(1).required(),
+};
+
+const deleteSalarySlip = {
+  params: Joi.object().keys({
+    candidateId: Joi.string().custom(objectId).required(),
+    salarySlipIndex: Joi.number().integer().min(0).required(),
+  }),
+};
+
+export { addSalarySlip, updateSalarySlip, deleteSalarySlip };
+
 

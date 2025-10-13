@@ -276,6 +276,72 @@ const exportAllCandidates = async (filters = {}) => {
   };
 };
 
+// Salary slip management methods
+const addSalarySlipToCandidate = async (candidateId, salarySlipData, currentUser) => {
+  const candidate = await getCandidateById(candidateId);
+  if (!candidate) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Candidate not found');
+  }
+  if (!isOwnerOrAdmin(currentUser, candidate)) {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Forbidden');
+  }
+
+  candidate.salarySlips.push(salarySlipData);
+  
+  // Recalculate profile completion
+  candidate.isProfileCompleted = calculateProfileCompletion(candidate);
+  candidate.isCompleted = candidate.isProfileCompleted === 100;
+  
+  await candidate.save();
+  return candidate;
+};
+
+const updateSalarySlipInCandidate = async (candidateId, salarySlipIndex, updateData, currentUser) => {
+  const candidate = await getCandidateById(candidateId);
+  if (!candidate) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Candidate not found');
+  }
+  if (!isOwnerOrAdmin(currentUser, candidate)) {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Forbidden');
+  }
+  if (salarySlipIndex < 0 || salarySlipIndex >= candidate.salarySlips.length) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid salary slip index');
+  }
+
+  // Update the salary slip
+  Object.assign(candidate.salarySlips[salarySlipIndex], updateData);
+  
+  // Recalculate profile completion
+  candidate.isProfileCompleted = calculateProfileCompletion(candidate);
+  candidate.isCompleted = candidate.isProfileCompleted === 100;
+  
+  await candidate.save();
+  return candidate;
+};
+
+const deleteSalarySlipFromCandidate = async (candidateId, salarySlipIndex, currentUser) => {
+  const candidate = await getCandidateById(candidateId);
+  if (!candidate) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Candidate not found');
+  }
+  if (!isOwnerOrAdmin(currentUser, candidate)) {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Forbidden');
+  }
+  if (salarySlipIndex < 0 || salarySlipIndex >= candidate.salarySlips.length) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid salary slip index');
+  }
+
+  // Remove the salary slip
+  candidate.salarySlips.splice(salarySlipIndex, 1);
+  
+  // Recalculate profile completion
+  candidate.isProfileCompleted = calculateProfileCompletion(candidate);
+  candidate.isCompleted = candidate.isProfileCompleted === 100;
+  
+  await candidate.save();
+  return candidate;
+};
+
 export {
   createCandidate,
   queryCandidates,
@@ -286,6 +352,10 @@ export {
   isOwnerOrAdmin,
   calculateProfileCompletion,
   hasAllRequiredData,
+  // Salary slip management
+  addSalarySlipToCandidate,
+  updateSalarySlipInCandidate,
+  deleteSalarySlipFromCandidate,
 };
 
 

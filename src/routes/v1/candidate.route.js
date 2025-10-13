@@ -16,6 +16,16 @@ router
   .route('/export')
   .post(auth('manageCandidates'), validate(candidateValidation.exportAllCandidates), candidateController.exportAll);
 
+// Salary slip management routes - MUST come before /:candidateId route to avoid conflicts
+router
+  .route('/salary-slips/:candidateId')
+  .post(auth(), validate(candidateValidation.addSalarySlip), candidateController.addSalarySlip);
+
+router
+  .route('/salary-slips/:candidateId/:salarySlipIndex')
+  .patch(auth(), validate(candidateValidation.updateSalarySlip), candidateController.updateSalarySlip)
+  .delete(auth(), validate(candidateValidation.deleteSalarySlip), candidateController.deleteSalarySlip);
+
 router
   .route('/:candidateId')
   .get(auth(), validate(candidateValidation.getCandidate), candidateController.get)

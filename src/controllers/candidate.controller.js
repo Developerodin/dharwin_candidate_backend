@@ -2,7 +2,17 @@ import httpStatus from 'http-status';
 import pick from '../utils/pick.js';
 import catchAsync from '../utils/catchAsync.js';
 import ApiError from '../utils/ApiError.js';
-import { createCandidate, queryCandidates, getCandidateById, updateCandidateById, deleteCandidateById, exportAllCandidates } from '../services/candidate.service.js';
+import { 
+  createCandidate, 
+  queryCandidates, 
+  getCandidateById, 
+  updateCandidateById, 
+  deleteCandidateById, 
+  exportAllCandidates,
+  addSalarySlipToCandidate,
+  updateSalarySlipInCandidate,
+  deleteSalarySlipFromCandidate
+} from '../services/candidate.service.js';
 import { sendEmail } from '../services/email.service.js';
 
 const create = catchAsync(async (req, res) => {
@@ -208,5 +218,32 @@ const generateCSVFormat = (exportData) => {
 };
 
 export { exportProfile, exportAll };
+
+// Salary slip management controllers
+const addSalarySlip = catchAsync(async (req, res) => {
+  const candidate = await addSalarySlipToCandidate(req.params.candidateId, req.body, req.user);
+  res.status(httpStatus.OK).send(candidate);
+});
+
+const updateSalarySlip = catchAsync(async (req, res) => {
+  const candidate = await updateSalarySlipInCandidate(
+    req.params.candidateId, 
+    req.params.salarySlipIndex, 
+    req.body, 
+    req.user
+  );
+  res.status(httpStatus.OK).send(candidate);
+});
+
+const deleteSalarySlip = catchAsync(async (req, res) => {
+  const candidate = await deleteSalarySlipFromCandidate(
+    req.params.candidateId, 
+    req.params.salarySlipIndex, 
+    req.user
+  );
+  res.status(httpStatus.OK).send(candidate);
+});
+
+export { addSalarySlip, updateSalarySlip, deleteSalarySlip };
 
 
