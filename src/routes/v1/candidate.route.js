@@ -49,6 +49,16 @@ router
   .route('/documents/status/:candidateId')
   .get(auth(), validate(candidateValidation.getDocumentStatus), candidateController.getCandidateDocumentStatus);
 
+// Share candidate profile route
+router
+  .route('/share/:candidateId')
+  .post(auth(), validate(candidateValidation.shareCandidateProfile), candidateController.shareProfile);
+
+// Public candidate profile route (no authentication required)
+router
+  .route('/public/candidate/:candidateId')
+  .get(candidateController.getPublicProfile);
+
 export default router;
 
 

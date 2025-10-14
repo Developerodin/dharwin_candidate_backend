@@ -438,6 +438,100 @@ const getDocuments = async (candidateId, user) => {
   };
 };
 
+const shareCandidateProfile = async (candidateId, shareData, currentUser) => {
+  const { email, withDoc = false } = shareData;
+  
+  // Get the candidate with populated owner and admin data
+  const candidate = await Candidate.findById(candidateId)
+    .populate('owner', 'name email')
+    .populate('adminId', 'name email');
+    
+  if (!candidate) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Candidate not found');
+  }
+  
+  // Check permissions: Admin can share any profile, candidates can only share their own
+  if (currentUser.role !== 'admin' && String(candidate.owner._id) !== String(currentUser.id)) {
+    throw new ApiError(httpStatus.FORBIDDEN, 'You can only share your own profile');
+  }
+  
+  // Generate a unique token for the public page
+  const crypto = await import('crypto');
+  const token = crypto.randomBytes(32).toString('hex');
+  
+  // Store the sharing data temporarily (in a real app, you might want to store this in Redis or DB)
+  // For now, we'll encode the data in the URL
+  const shareDataEncoded = Buffer.from(JSON.stringify({
+    candidateId: candidate._id.toString(),
+    withDoc,
+    sharedBy: currentUser.name,
+    sharedAt: new Date().toISOString()
+  })).toString('base64');
+  
+  // Generate the public page URL
+  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const publicUrl = `${baseUrl}/v1/candidates/public/candidate/${candidate._id}?token=${token}&data=${shareDataEncoded}`;
+  
+  return {
+    candidateId: candidate._id,
+    candidateName: candidate.fullName,
+    recipientEmail: email,
+    withDoc,
+    publicUrl,
+    sharedBy: currentUser.name,
+    sharedAt: new Date()
+  };
+};
+
+const getPublicCandidateProfile = async (candidateId, token, data) => {
+  // Verify the token and decode the data
+  let shareData;
+  try {
+    const decodedData = Buffer.from(data, 'base64').toString('utf-8');
+    shareData = JSON.parse(decodedData);
+  } catch (error) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid share data');
+  }
+  
+  // Verify the candidate ID matches
+  if (shareData.candidateId !== candidateId) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid candidate ID');
+  }
+  
+  // Get the candidate data
+  const candidate = await Candidate.findById(candidateId)
+    .populate('owner', 'name email')
+    .populate('adminId', 'name email');
+    
+  if (!candidate) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Candidate not found');
+  }
+  
+  // Prepare candidate data for public display
+  const candidateData = {
+    fullName: candidate.fullName,
+    email: candidate.email,
+    phoneNumber: candidate.phoneNumber,
+    shortBio: candidate.shortBio,
+    sevisId: candidate.sevisId,
+    ead: candidate.ead,
+    degree: candidate.degree,
+    supervisorName: candidate.supervisorName,
+    supervisorContact: candidate.supervisorContact,
+    qualifications: candidate.qualifications,
+    experiences: candidate.experiences,
+    skills: candidate.skills,
+    socialLinks: candidate.socialLinks,
+    documents: shareData.withDoc ? candidate.documents : [],
+    salarySlips: shareData.withDoc ? candidate.salarySlips : [],
+    withDoc: shareData.withDoc,
+    sharedBy: shareData.sharedBy,
+    sharedAt: shareData.sharedAt
+  };
+  
+  return candidateData;
+};
+
 export {
   createCandidate,
   queryCandidates,
@@ -456,6 +550,9 @@ export {
   verifyDocument,
   getDocumentStatus,
   getDocuments,
+  // Profile sharing
+  shareCandidateProfile,
+  getPublicCandidateProfile,
 };
 
 

@@ -276,4 +276,22 @@ const getDocuments = {
 
 export { verifyDocument, getDocumentStatus, getDocuments };
 
+// Share candidate profile validation
+const shareCandidateProfile = {
+  params: Joi.object().keys({
+    candidateId: Joi.string().custom(objectId).required(),
+  }),
+  body: Joi.object().keys({
+    email: Joi.string().email().required().messages({
+      'string.email': 'Please provide a valid email address',
+      'any.required': 'Recipient email is required'
+    }),
+    withDoc: Joi.boolean().default(false).messages({
+      'boolean.base': 'withDoc must be a boolean value'
+    }),
+  }).required(),
+};
+
+export { shareCandidateProfile };
+
 
