@@ -65,6 +65,11 @@ app.get('/verify-email', (req, res) => {
   res.sendFile(path.join(process.cwd(), 'public/verify-email.html'));
 });
 
+// specific route for password reset page
+app.get('/reset-password', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'public/reset-password.html'));
+});
+
 // limit repeated failed requests to auth endpoints
 if (config.env === 'production') {
   app.use('/v1/auth', authLimiter);
