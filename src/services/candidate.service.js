@@ -469,7 +469,7 @@ const shareCandidateProfile = async (candidateId, shareData, currentUser) => {
   })).toString('base64');
   
   // Generate the public page URL
-  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const baseUrl = 'https://crm-apis.dharwinbusinesssolutions.com/';
   const publicUrl = `${baseUrl}/v1/candidates/public/candidate/${candidate._id}?token=${token}&data=${shareDataEncoded}`;
   
   return {
