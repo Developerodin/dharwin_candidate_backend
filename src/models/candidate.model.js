@@ -33,6 +33,7 @@ const documentSchema = new mongoose.Schema(
     originalName: { type: String, trim: true }, // Original filename
     size: { type: Number }, // File size in bytes
     mimeType: { type: String, trim: true }, // File MIME type
+    status: { type: Number, default: 0 },
   },
   { _id: false }
 );

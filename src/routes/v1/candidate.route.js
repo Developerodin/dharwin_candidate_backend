@@ -36,6 +36,19 @@ router
   .route('/:candidateId/export')
   .post(auth(), validate(candidateValidation.exportCandidate), candidateController.exportProfile);
 
+// Document verification routes
+router
+  .route('/documents/:candidateId')
+  .get(auth(), validate(candidateValidation.getDocuments), candidateController.getCandidateDocuments);
+
+router
+  .route('/documents/verify/:candidateId/:documentIndex')
+  .patch(auth('manageCandidates'), validate(candidateValidation.verifyDocument), candidateController.verifyDocumentStatus);
+
+router
+  .route('/documents/status/:candidateId')
+  .get(auth(), validate(candidateValidation.getDocumentStatus), candidateController.getCandidateDocumentStatus);
+
 export default router;
 
 

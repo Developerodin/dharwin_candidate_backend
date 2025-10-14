@@ -342,6 +342,102 @@ const deleteSalarySlipFromCandidate = async (candidateId, salarySlipIndex, curre
   return candidate;
 };
 
+// Document verification services
+const verifyDocument = async (candidateId, documentIndex, verificationData, user) => {
+  // Check if user has permission to verify documents (admin only)
+  if (user.role !== 'admin') {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Only admins can verify documents');
+  }
+
+  const candidate = await Candidate.findById(candidateId);
+  if (!candidate) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Candidate not found');
+  }
+
+  // Check if document index is valid
+  if (documentIndex >= candidate.documents.length || documentIndex < 0) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid document index');
+  }
+
+  // Update the document status
+  candidate.documents[documentIndex].status = verificationData.status;
+  if (verificationData.adminNotes) {
+    candidate.documents[documentIndex].adminNotes = verificationData.adminNotes;
+  }
+  candidate.documents[documentIndex].verifiedAt = new Date();
+  candidate.documents[documentIndex].verifiedBy = user.id;
+
+  await candidate.save();
+  return candidate;
+};
+
+const getDocumentStatus = async (candidateId, user) => {
+  // Check if user has permission to view document status
+  if (user.role !== 'admin' && user.id !== candidateId) {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Access denied');
+  }
+
+  const candidate = await Candidate.findById(candidateId);
+  if (!candidate) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Candidate not found');
+  }
+
+  // Return only document information with status
+  const documentsWithStatus = candidate.documents.map((doc, index) => ({
+    index,
+    label: doc.label,
+    originalName: doc.originalName,
+    status: doc.status,
+    adminNotes: doc.adminNotes,
+    verifiedAt: doc.verifiedAt,
+    verifiedBy: doc.verifiedBy,
+    url: doc.url,
+    size: doc.size,
+    mimeType: doc.mimeType
+  }));
+
+  return {
+    candidateId: candidate._id,
+    fullName: candidate.fullName,
+    email: candidate.email,
+    documents: documentsWithStatus
+  };
+};
+
+const getDocuments = async (candidateId, user) => {
+  // Check if user has permission to view documents
+  if (user.role !== 'admin' && user.id !== candidateId) {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Access denied');
+  }
+
+  const candidate = await Candidate.findById(candidateId);
+  if (!candidate) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Candidate not found');
+  }
+
+  // Return all document information
+  const documents = candidate.documents.map((doc, index) => ({
+    index,
+    label: doc.label,
+    originalName: doc.originalName,
+    url: doc.url,
+    key: doc.key,
+    size: doc.size,
+    mimeType: doc.mimeType,
+    status: doc.status,
+    adminNotes: doc.adminNotes,
+    verifiedAt: doc.verifiedAt,
+    verifiedBy: doc.verifiedBy
+  }));
+
+  return {
+    candidateId: candidate._id,
+    fullName: candidate.fullName,
+    email: candidate.email,
+    documents: documents
+  };
+};
+
 export {
   createCandidate,
   queryCandidates,
@@ -356,6 +452,10 @@ export {
   addSalarySlipToCandidate,
   updateSalarySlipInCandidate,
   deleteSalarySlipFromCandidate,
+  // Document verification
+  verifyDocument,
+  getDocumentStatus,
+  getDocuments,
 };
 
 

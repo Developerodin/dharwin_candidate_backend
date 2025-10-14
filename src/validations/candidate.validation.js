@@ -8,6 +8,7 @@ const document = Joi.object({
   originalName: Joi.string().optional().trim(),
   size: Joi.number().optional().integer().min(0),
   mimeType: Joi.string().optional().trim(),
+  status: Joi.number().optional().integer().default(0),
 });
 
 const qualification = Joi.object({
@@ -243,5 +244,36 @@ const deleteSalarySlip = {
 };
 
 export { addSalarySlip, updateSalarySlip, deleteSalarySlip };
+
+// Document verification validations
+const verifyDocument = {
+  params: Joi.object().keys({
+    candidateId: Joi.string().custom(objectId).required(),
+    documentIndex: Joi.number().integer().min(0).required(),
+  }),
+  body: Joi.object().keys({
+    status: Joi.number().integer().valid(0, 1, 2).required().messages({
+      'any.only': 'Status must be 0 (pending), 1 (approved), or 2 (rejected)',
+      'any.required': 'Status is required'
+    }),
+    adminNotes: Joi.string().optional().trim().max(500).messages({
+      'string.max': 'Admin notes cannot exceed 500 characters'
+    }),
+  }).required(),
+};
+
+const getDocumentStatus = {
+  params: Joi.object().keys({
+    candidateId: Joi.string().custom(objectId).required(),
+  }),
+};
+
+const getDocuments = {
+  params: Joi.object().keys({
+    candidateId: Joi.string().custom(objectId).required(),
+  }),
+};
+
+export { verifyDocument, getDocumentStatus, getDocuments };
 
 

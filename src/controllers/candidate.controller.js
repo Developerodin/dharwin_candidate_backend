@@ -11,7 +11,10 @@ import {
   exportAllCandidates,
   addSalarySlipToCandidate,
   updateSalarySlipInCandidate,
-  deleteSalarySlipFromCandidate
+  deleteSalarySlipFromCandidate,
+  verifyDocument,
+  getDocumentStatus,
+  getDocuments
 } from '../services/candidate.service.js';
 import { sendEmail } from '../services/email.service.js';
 
@@ -245,5 +248,38 @@ const deleteSalarySlip = catchAsync(async (req, res) => {
 });
 
 export { addSalarySlip, updateSalarySlip, deleteSalarySlip };
+
+// Document verification controllers
+const verifyDocumentStatus = catchAsync(async (req, res) => {
+  const candidate = await verifyDocument(
+    req.params.candidateId,
+    req.params.documentIndex,
+    req.body,
+    req.user
+  );
+  res.status(httpStatus.OK).send({
+    success: true,
+    message: 'Document status updated successfully',
+    data: candidate
+  });
+});
+
+const getCandidateDocumentStatus = catchAsync(async (req, res) => {
+  const candidate = await getDocumentStatus(req.params.candidateId, req.user);
+  res.status(httpStatus.OK).send({
+    success: true,
+    data: candidate
+  });
+});
+
+const getCandidateDocuments = catchAsync(async (req, res) => {
+  const documents = await getDocuments(req.params.candidateId, req.user);
+  res.status(httpStatus.OK).send({
+    success: true,
+    data: documents
+  });
+});
+
+export { verifyDocumentStatus, getCandidateDocumentStatus, getCandidateDocuments };
 
 
