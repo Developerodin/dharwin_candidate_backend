@@ -420,57 +420,48 @@ const generatePublicProfileHTML = (candidateData) => {
             }
             
             body {
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-                line-height: 1.6;
-                color: #1a202c;
-                background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-                min-height: 100vh;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                line-height: 1.5;
+                color: #2c3e50;
+                background: #f8f9fa;
+                margin: 0;
+                padding: 0;
             }
             
             .container {
-                max-width: 1200px;
-                margin: 0 auto;
+                max-width: 1000px;
+                margin: 20px auto;
                 padding: 20px;
+                background: white;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+                border-radius: 8px;
             }
             
             .header {
-                background: linear-gradient(135deg, #093464 0%, #0d4a7a 100%);
+                background: linear-gradient(135deg, #1a365d 0%, #2c5282 100%);
                 color: white;
-                padding: 40px;
-                border-radius: 12px;
-                margin-bottom: 30px;
+                padding: 25px;
+                margin-bottom: 25px;
                 text-align: center;
-                position: relative;
-                overflow: hidden;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             }
             
-            .header::before {
-                content: '';
-                position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
-                opacity: 0.3;
-            }
             
             .profile-header {
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                gap: 20px;
-                position: relative;
-                z-index: 1;
+                gap: 15px;
             }
             
             .profile-picture {
-                width: 120px;
-                height: 120px;
-                border-radius: 50%;
+                width: 90px;
+                height: 90px;
+                border-radius: 8px;
                 overflow: hidden;
-                border: 4px solid rgba(255, 255, 255, 0.2);
-                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+                border: 3px solid #ffffff;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
             }
             
             .profile-picture img {
@@ -497,204 +488,249 @@ const generatePublicProfileHTML = (candidateData) => {
             }
             
             .profile-title {
-                position: relative;
-                z-index: 1;
-                font-size: 32px;
+                font-size: 28px;
                 font-weight: 700;
-                margin-bottom: 10px;
+                margin-bottom: 8px;
+                text-shadow: 0 1px 2px rgba(0,0,0,0.1);
             }
             
             .profile-subtitle {
-                position: relative;
-                z-index: 1;
-                font-size: 18px;
-                opacity: 0.9;
+                font-size: 16px;
+                opacity: 0.95;
+                font-weight: 300;
             }
             
             .main-content {
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+                margin-bottom: 25px;
+            }
+            
+            .info-grid {
                 display: grid;
-                grid-template-columns: 1fr 2fr;
-                gap: 30px;
-                margin-bottom: 30px;
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                gap: 15px;
             }
             
-            .sidebar {
-                background: white;
-                border-radius: 12px;
-                padding: 30px;
-                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-                height: fit-content;
+            .social-links-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 15px;
             }
             
-            .content {
-                background: white;
-                border-radius: 12px;
-                padding: 30px;
-                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            .skills-container {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
             }
             
             .section {
-                margin-bottom: 30px;
+                margin-bottom: 20px;
+                border: 1px solid #e1e8ed;
+                padding: 20px;
+                background: #ffffff;
+                border-radius: 6px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.05);
             }
             
             .section-title {
-                color: #093464;
-                font-size: 20px;
-                font-weight: 600;
-                margin-bottom: 20px;
-                padding-bottom: 10px;
-                border-bottom: 2px solid #e2e8f0;
+                color: #1a365d;
+                font-size: 18px;
+                font-weight: 700;
+                margin-bottom: 15px;
+                padding-bottom: 8px;
+                border-bottom: 2px solid #1a365d;
+                text-transform: uppercase;
+                letter-spacing: 0.8px;
             }
             
             .info-item {
-                margin-bottom: 20px;
-                padding: 15px;
-                background: #f8fafc;
-                border-radius: 8px;
-                border-left: 4px solid #36af4c;
+                margin-bottom: 12px;
+                padding: 12px;
+                background: #f8f9fa;
+                border: 1px solid #e1e8ed;
+                border-left: 4px solid #1a365d;
+                border-radius: 4px;
+                transition: all 0.2s ease;
+            }
+            
+            .info-item:hover {
+                background: #f1f3f4;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             }
             
             .info-label {
                 font-weight: 600;
-                color: #093464;
+                color: #1a365d;
                 margin-bottom: 5px;
-                font-size: 14px;
+                font-size: 13px;
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
             }
             
             .info-value {
-                color: #1a202c;
-                font-size: 16px;
+                color: #2c3e50;
+                font-size: 15px;
+                line-height: 1.4;
             }
             
             .list-item {
-                background: #f8fafc;
-                border-radius: 8px;
-                padding: 20px;
-                margin-bottom: 15px;
-                border-left: 4px solid #36af4c;
+                background: #ffffff;
+                border: 1px solid #e1e8ed;
+                padding: 15px;
+                margin-bottom: 12px;
+                border-left: 4px solid #1a365d;
+                border-radius: 4px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+                transition: all 0.2s ease;
+            }
+            
+            .list-item:hover {
+                box-shadow: 0 2px 6px rgba(0,0,0,0.1);
             }
             
             .list-item-title {
-                font-weight: 600;
-                color: #1a202c;
+                font-weight: 700;
+                color: #1a365d;
                 margin-bottom: 8px;
-                font-size: 18px;
+                font-size: 16px;
             }
             
             .list-item-subtitle {
                 color: #4a5568;
                 margin-bottom: 8px;
-                font-size: 16px;
+                font-size: 14px;
+                font-weight: 500;
             }
             
             .list-item-description {
                 color: #64748b;
-                font-size: 14px;
+                font-size: 13px;
                 font-style: italic;
+                line-height: 1.4;
             }
             
             .skill-tag {
                 display: inline-block;
-                background: #e2e8f0;
-                color: #4a5568;
+                background: #e3f2fd;
+                color: #1a365d;
                 padding: 6px 12px;
+                border: 1px solid #bbdefb;
                 border-radius: 20px;
-                font-size: 14px;
+                font-size: 12px;
                 font-weight: 500;
-                margin: 4px;
+                margin: 3px;
+                transition: all 0.2s ease;
+            }
+            
+            .skill-tag:hover {
+                background: #bbdefb;
+                transform: translateY(-1px);
             }
             
             .document-item {
-                background: #f8fafc;
-                border-radius: 8px;
-                padding: 16px 20px;
-                margin-bottom: 12px;
-                border-left: 4px solid #36af4c;
+                background: #ffffff;
+                border: 1px solid #e1e8ed;
+                padding: 12px 16px;
+                margin-bottom: 10px;
+                border-left: 4px solid #1a365d;
+                border-radius: 4px;
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                gap: 16px;
+                gap: 15px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+                transition: all 0.2s ease;
+            }
+            
+            .document-item:hover {
+                box-shadow: 0 2px 6px rgba(0,0,0,0.1);
             }
             
             
             
             .document-name {
                 font-weight: 600;
-                color: #1a202c;
+                color: #1a365d;
                 word-break: break-word;
                 flex: 1;
                 min-width: 0;
+                font-size: 14px;
             }
             
             .document-size {
                 color: #64748b;
-                font-size: 14px;
-                margin-bottom: 8px;
+                font-size: 11px;
+                margin-bottom: 3px;
             }
             
             .document-actions {
                 display: flex;
-                gap: 8px;
+                gap: 5px;
                 flex-shrink: 0;
             }
             
             .document-preview {
-                background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+                background: #1a365d;
                 color: white;
                 padding: 6px 12px;
-                border-radius: 6px;
+                border-radius: 4px;
                 text-decoration: none;
                 font-weight: 500;
                 font-size: 12px;
-                transition: all 0.3s ease;
                 border: none;
                 cursor: pointer;
+                transition: all 0.2s ease;
             }
             
             .document-preview:hover {
-                background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+                background: #2c5282;
                 transform: translateY(-1px);
+                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
             }
             
             
             
             .shared-info {
-                background: #f0f9ff;
-                border: 1px solid #bae6fd;
-                border-radius: 8px;
-                padding: 20px;
-                margin-top: 30px;
+                background: #f8f9fa;
+                border: 1px solid #e1e8ed;
+                border-radius: 6px;
+                padding: 15px;
+                margin-top: 20px;
                 text-align: center;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.05);
             }
             
             .shared-info-title {
-                color: #0369a1;
-                font-weight: 600;
+                color: #1a365d;
+                font-weight: 700;
                 margin-bottom: 8px;
-            }
-            
-            .shared-info-text {
-                color: #0369a1;
                 font-size: 14px;
             }
             
+            .shared-info-text {
+                color: #4a5568;
+                font-size: 13px;
+            }
+            
             .footer {
-                background: #093464;
+                background: linear-gradient(135deg, #1a365d 0%, #2c5282 100%);
                 color: white;
-                padding: 30px;
-                border-radius: 12px;
+                padding: 20px;
                 text-align: center;
+                border-radius: 6px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             }
             
             .footer p {
-                margin-bottom: 8px;
-                opacity: 0.9;
+                margin-bottom: 5px;
+                opacity: 0.95;
+                font-size: 13px;
             }
             
             .footer a {
-                color: #36af4c;
+                color: #ffffff;
                 text-decoration: none;
                 font-weight: 500;
             }
@@ -705,26 +741,27 @@ const generatePublicProfileHTML = (candidateData) => {
             
             @media (max-width: 768px) {
                 .main-content {
-                    grid-template-columns: 1fr;
+                    gap: 15px;
                 }
                 
                 .container {
-                    padding: 10px;
+                    padding: 15px;
+                    margin: 10px;
                 }
                 
                 .header {
-                    padding: 30px 20px;
+                    padding: 20px;
                 }
                 
                 .profile-header {
                     flex-direction: column;
                     text-align: center;
-                    gap: 15px;
+                    gap: 12px;
                 }
                 
                 .profile-picture {
-                    width: 100px;
-                    height: 100px;
+                    width: 70px;
+                    height: 70px;
                 }
                 
                 .profile-info {
@@ -732,27 +769,39 @@ const generatePublicProfileHTML = (candidateData) => {
                 }
                 
                 .profile-title {
-                    font-size: 24px;
+                    font-size: 22px;
                 }
                 
-                .sidebar, .content {
-                    padding: 20px;
+                .section {
+                    padding: 15px;
+                }
+                
+                .info-grid {
+                    grid-template-columns: 1fr;
+                }
+                
+                .social-links-grid {
+                    grid-template-columns: 1fr;
+                }
+                
+                .skills-container {
+                    justify-content: center;
                 }
                 
                 .document-item {
-                    flex-direction: row;
-                    align-items: center;
-                    padding: 12px 16px;
+                    flex-direction: column;
+                    align-items: flex-start;
+                    padding: 12px;
                 }
-                
                 
                 .document-actions {
                     flex-direction: row;
                     gap: 8px;
+                    margin-top: 8px;
                 }
                 
-                .document-preview, .document-download {
-                    width: 100%;
+                .document-preview {
+                    width: auto;
                     text-align: center;
                 }
             }
@@ -778,9 +827,14 @@ const generatePublicProfileHTML = (candidateData) => {
             </div>
             
             <div class="main-content">
-                <div class="sidebar">
-                    <div class="section">
-                        <h2 class="section-title">Contact Information</h2>
+                <!-- Personal Info Section -->
+                <div class="section">
+                    <h2 class="section-title">👤 Personal Information</h2>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">Full Name</div>
+                            <div class="info-value">${candidateData.fullName}</div>
+                        </div>
                         
                         <div class="info-item">
                             <div class="info-label">Email</div>
@@ -789,7 +843,7 @@ const generatePublicProfileHTML = (candidateData) => {
                         
                         <div class="info-item">
                             <div class="info-label">Phone</div>
-                            <div class="info-value">${candidateData.phoneNumber}</div>
+                            <div class="info-value">${candidateData?.countryCode === "IN" ? "+91 " : "+1 "} ${candidateData.phoneNumber}</div>
                         </div>
                         
                         ${candidateData.shortBio ? `
@@ -827,13 +881,6 @@ const generatePublicProfileHTML = (candidateData) => {
                         </div>
                         ` : ''}
                         
-                        ${candidateData.countryCode ? `
-                        <div class="info-item">
-                            <div class="info-label">Country Code</div>
-                            <div class="info-value">${candidateData.countryCode}</div>
-                        </div>
-                        ` : ''}
-                        
                         ${candidateData.degree ? `
                         <div class="info-item">
                             <div class="info-label">Degree</div>
@@ -845,76 +892,31 @@ const generatePublicProfileHTML = (candidateData) => {
                         <div class="info-item">
                             <div class="info-label">Supervisor</div>
                             <div class="info-value">${candidateData.supervisorName}</div>
-                        </div>
-                        ` : ''}
-                        
-                        ${candidateData.supervisorContact ? `
-                        <div class="info-item">
-                            <div class="info-label">Supervisor Contact</div>
-                            <div class="info-value">${candidateData.supervisorContact}</div>
-                        </div>
-                        ` : ''}
-                        
-                        ${candidateData.supervisorCountryCode ? `
-                        <div class="info-item">
-                            <div class="info-label">Supervisor Country Code</div>
-                            <div class="info-value">${candidateData.supervisorCountryCode}</div>
-                        </div>
-                        ` : ''}
-                        
-                        ${candidateData.salaryRange ? `
-                        <div class="info-item">
-                            <div class="info-label">Salary Range</div>
-                            <div class="info-value">${candidateData.salaryRange}</div>
+                            <div class="info-value">${candidateData?.supervisorCountryCode === "IN" ? "+91 " : "+1 "} ${candidateData.supervisorContact}</div>
                         </div>
                         ` : ''}
                         
                         ${candidateData.address?.streetAddress ? `
                         <div class="info-item">
-                            <div class="info-label">Street Address</div>
-                            <div class="info-value">${candidateData.address.streetAddress}</div>
-                        </div>
-                        ` : ''}
-                        
-                        ${candidateData.address?.streetAddress2 ? `
-                        <div class="info-item">
-                            <div class="info-label">Street Address 2</div>
-                            <div class="info-value">${candidateData.address.streetAddress2}</div>
-                        </div>
-                        ` : ''}
-                        
-                        ${candidateData.address?.city ? `
-                        <div class="info-item">
-                            <div class="info-label">City</div>
-                            <div class="info-value">${candidateData.address.city}</div>
-                        </div>
-                        ` : ''}
-                        
-                        ${candidateData.address?.state ? `
-                        <div class="info-item">
-                            <div class="info-label">State</div>
-                            <div class="info-value">${candidateData.address.state}</div>
-                        </div>
-                        ` : ''}
-                        
-                        ${candidateData.address?.zipCode ? `
-                        <div class="info-item">
-                            <div class="info-label">Zip Code</div>
-                            <div class="info-value">${candidateData.address.zipCode}</div>
-                        </div>
-                        ` : ''}
-                        
-                        ${candidateData.address?.country ? `
-                        <div class="info-item">
-                            <div class="info-label">Country</div>
-                            <div class="info-value">${candidateData.address.country}</div>
+                            <div class="info-label">Address</div>
+                            <div class="info-value">
+                                ${candidateData.address.streetAddress}
+                                ${candidateData.address.streetAddress2 ? `<br/>${candidateData.address.streetAddress2}` : ''}
+                                ${candidateData.address.city ? `<br/>${candidateData.address.city}` : ''}
+                                ${candidateData.address.state ? `, ${candidateData.address.state}` : ''}
+                                ${candidateData.address.zipCode ? ` ${candidateData.address.zipCode}` : ''}
+                                ${candidateData.address.country ? `<br/>${candidateData.address.country}` : ''}
+                            </div>
                         </div>
                         ` : ''}
                     </div>
-                    
-                    ${candidateData.socialLinks && candidateData.socialLinks.length > 0 ? `
-                    <div class="section">
-                        <h2 class="section-title">Social Links</h2>
+                </div>
+                
+                <!-- Social Links Section -->
+                ${candidateData.socialLinks && candidateData.socialLinks.length > 0 ? `
+                <div class="section">
+                    <h2 class="section-title">🔗 Social Links</h2>
+                    <div class="social-links-grid">
                         ${candidateData.socialLinks.map(sl => `
                         <div class="info-item">
                             <div class="info-label">${sl.platform}</div>
@@ -922,91 +924,94 @@ const generatePublicProfileHTML = (candidateData) => {
                         </div>
                         `).join('')}
                     </div>
-                    ` : ''}
                 </div>
+                ` : ''}
                 
-                <div class="content">
-                    ${candidateData.qualifications && candidateData.qualifications.length > 0 ? `
-                    <div class="section">
-                        <h2 class="section-title">🎓 Qualifications</h2>
-                        ${candidateData.qualifications.map(q => `
-                        <div class="list-item">
-                            <div class="list-item-title">${q.degree}</div>
-                            <div class="list-item-subtitle">${q.institute}${q.location ? ` - ${q.location}` : ''}</div>
-                            ${q.startYear || q.endYear ? `<div class="list-item-subtitle">${q.startYear || ''} - ${q.endYear || ''}</div>` : ''}
-                            ${q.description ? `<div class="list-item-description">${q.description}</div>` : ''}
-                        </div>
+                <!-- Skills Section -->
+                ${candidateData.skills && candidateData.skills.length > 0 ? `
+                <div class="section">
+                    <h2 class="section-title">🛠️ Skills</h2>
+                    <div class="skills-container">
+                        ${candidateData.skills.map(s => `
+                        <span class="skill-tag">${s.name} (${s.level})</span>
                         `).join('')}
                     </div>
-                    ` : ''}
-                    
-                    ${candidateData.experiences && candidateData.experiences.length > 0 ? `
-                    <div class="section">
-                        <h2 class="section-title">💼 Work Experience</h2>
-                        ${candidateData.experiences.map(e => `
-                        <div class="list-item">
-                            <div class="list-item-title">${e.role}</div>
-                            <div class="list-item-subtitle">${e.company}</div>
-                            ${e.startDate || e.endDate || e.currentlyWorking ? `<div class="list-item-subtitle">${e.startDate ? new Date(e.startDate).toLocaleDateString() : ''} - ${e.currentlyWorking ? 'Present' : (e.endDate ? new Date(e.endDate).toLocaleDateString() : '')}</div>` : ''}
-                            ${e.description ? `<div class="list-item-description">${e.description}</div>` : ''}
-                        </div>
-                        `).join('')}
-                    </div>
-                    ` : ''}
-                    
-                    ${candidateData.skills && candidateData.skills.length > 0 ? `
-                    <div class="section">
-                        <h2 class="section-title">🛠️ Skills</h2>
-                        <div>
-                            ${candidateData.skills.map(s => `
-                            <span class="skill-tag">${s.name} (${s.level})</span>
-                            `).join('')}
-                        </div>
-                    </div>
-                    ` : ''}
-                    
-                    ${withDoc ? `
-                    <div class="section">
-                        <h2 class="section-title">📄 Documents</h2>
-                        ${candidateData.documents && candidateData.documents.length > 0 ? `
-                        ${candidateData.documents.map(d => `
-                        <div class="document-item">
-                            <div class="document-name">${d.label || d.originalName}</div>
-                            <div class="document-actions">
-                                ${getPreviewButton(d)}
-                            </div>
-                        </div>
-                        `).join('')}
-                        ` : `
-                        <div class="list-item">
-                            <div class="list-item-title">No documents available</div>
-                            <div class="list-item-description">This candidate has not uploaded any documents yet.</div>
-                        </div>
-                        `}
-                    </div>
-                    ` : ''}
-                    
-                    ${withDoc ? `
-                    <div class="section">
-                        <h2 class="section-title">💰 Salary Slips</h2>
-                        ${candidateData.salarySlips && candidateData.salarySlips.length > 0 ? `
-                        ${candidateData.salarySlips.map(ss => `
-                        <div class="document-item">
-                            <div class="document-name">${ss.month} ${ss.year}</div>
-                            <div class="document-actions">
-                                ${ss.documentUrl ? `<a href="${ss.documentUrl}" class="document-preview" target="_blank" rel="noopener noreferrer">Preview</a>` : ''}
-                            </div>
-                        </div>
-                        `).join('')}
-                        ` : `
-                        <div class="list-item">
-                            <div class="list-item-title">No salary slips available</div>
-                            <div class="list-item-description">This candidate has not uploaded any salary slips yet.</div>
-                        </div>
-                        `}
-                    </div>
-                    ` : ''}
                 </div>
+                ` : ''}
+                
+                <!-- Work Experience Section -->
+                ${candidateData.experiences && candidateData.experiences.length > 0 ? `
+                <div class="section">
+                    <h2 class="section-title">💼 Work Experience</h2>
+                    ${candidateData.experiences.map(e => `
+                    <div class="list-item">
+                        <div class="list-item-title">${e.role}</div>
+                        <div class="list-item-subtitle">${e.company}</div>
+                        ${e.startDate || e.endDate || e.currentlyWorking ? `<div class="list-item-subtitle">${e.startDate ? new Date(e.startDate).toLocaleDateString() : ''} - ${e.currentlyWorking ? 'Present' : (e.endDate ? new Date(e.endDate).toLocaleDateString() : '')}</div>` : ''}
+                        ${e.description ? `<div class="list-item-description">${e.description}</div>` : ''}
+                    </div>
+                    `).join('')}
+                </div>
+                ` : ''}
+                
+                <!-- Qualifications Section -->
+                ${candidateData.qualifications && candidateData.qualifications.length > 0 ? `
+                <div class="section">
+                    <h2 class="section-title">🎓 Qualifications</h2>
+                    ${candidateData.qualifications.map(q => `
+                    <div class="list-item">
+                        <div class="list-item-title">${q.degree}</div>
+                        <div class="list-item-subtitle">${q.institute}${q.location ? ` - ${q.location}` : ''}</div>
+                        ${q.startYear || q.endYear ? `<div class="list-item-subtitle">${q.startYear || ''} - ${q.endYear || ''}</div>` : ''}
+                        ${q.description ? `<div class="list-item-description">${q.description}</div>` : ''}
+                    </div>
+                    `).join('')}
+                </div>
+                ` : ''}
+                
+                <!-- Documents Section -->
+                ${withDoc ? `
+                <div class="section">
+                    <h2 class="section-title">📄 Documents</h2>
+                    ${candidateData.documents && candidateData.documents.length > 0 ? `
+                    ${candidateData.documents.map(d => `
+                    <div class="document-item">
+                        <div class="document-name">${d.label || d.originalName}</div>
+                        <div class="document-actions">
+                            ${getPreviewButton(d)}
+                        </div>
+                    </div>
+                    `).join('')}
+                    ` : `
+                    <div class="list-item">
+                        <div class="list-item-title">No documents available</div>
+                        <div class="list-item-description">This candidate has not uploaded any documents yet.</div>
+                    </div>
+                    `}
+                </div>
+                ` : ''}
+                
+                <!-- Salary Slip Section -->
+                ${withDoc ? `
+                <div class="section">
+                    <h2 class="section-title">💰 Salary Slips</h2>
+                    ${candidateData.salarySlips && candidateData.salarySlips.length > 0 ? `
+                    ${candidateData.salarySlips.map(ss => `
+                    <div class="document-item">
+                        <div class="document-name">${ss.month} ${ss.year}</div>
+                        <div class="document-actions">
+                            ${ss.documentUrl ? `<a href="${ss.documentUrl}" class="document-preview" target="_blank" rel="noopener noreferrer">Preview</a>` : ''}
+                        </div>
+                    </div>
+                    `).join('')}
+                    ` : `
+                    <div class="list-item">
+                        <div class="list-item-title">No salary slips available</div>
+                        <div class="list-item-description">This candidate has not uploaded any salary slips yet.</div>
+                    </div>
+                    `}
+                </div>
+                ` : ''}
             </div>
             
             <div class="shared-info">
