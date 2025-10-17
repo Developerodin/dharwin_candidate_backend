@@ -55,6 +55,10 @@ const userSchema = mongoose.Schema(
         }
       },
     },
+    countryCode: {
+      type: String,
+      trim: true,
+    },
     adminId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

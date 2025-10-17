@@ -20,6 +20,7 @@ const experienceSchema = new mongoose.Schema(
     role: { type: String, required: true, trim: true },
     startDate: { type: Date },
     endDate: { type: Date },
+    currentlyWorking: { type: Boolean, default: false },
     description: { type: String, trim: true },
   },
   { _id: false }
@@ -75,14 +76,34 @@ const candidateSchema = new mongoose.Schema(
 
     // Personal Info
     fullName: { type: String, required: true, trim: true },
-    email: { type: String, required: true, trim: true, lowercase: true },
+    email: { type: String, required: true, trim: true, lowercase: true, unique: true },
     phoneNumber: { type: String, required: true, trim: true },
+    profilePicture: {
+      url: { type: String, trim: true },
+      key: { type: String, trim: true }, // S3 file key
+      originalName: { type: String, trim: true }, // Original filename
+      size: { type: Number }, // File size in bytes
+      mimeType: { type: String, trim: true }, // File MIME type
+    },
     shortBio: { type: String, trim: true },
     sevisId: { type: String, trim: true },
     ead: { type: String, trim: true },
+    visaType: { type: String, trim: true },
+    customVisaType: { type: String, trim: true },
+    countryCode: { type: String, trim: true },
     degree: { type: String, trim: true },
     supervisorName: { type: String, trim: true },
     supervisorContact: { type: String, trim: true },
+    supervisorCountryCode: { type: String, trim: true },
+    salaryRange: { type: String, trim: true },
+    address: {
+      streetAddress: { type: String, trim: true },
+      streetAddress2: { type: String, trim: true },
+      city: { type: String, trim: true },
+      state: { type: String, trim: true },
+      zipCode: { type: String, trim: true },
+      country: { type: String, trim: true },
+    },
 
     // Dynamic sections
     qualifications: { type: [qualificationSchema], default: [] },

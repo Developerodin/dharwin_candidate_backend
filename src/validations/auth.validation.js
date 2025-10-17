@@ -11,6 +11,7 @@ const register = {
     phoneNumber: Joi.string().optional().pattern(/^[\+]?[1-9][\d]{0,15}$/).messages({
       'string.pattern.base': 'Phone number must be a valid mobile phone number'
     }),
+    countryCode: Joi.string().optional().trim(),
     adminId: Joi.when('role', {
       is: 'user',
       then: Joi.string().required().custom(objectId).messages({

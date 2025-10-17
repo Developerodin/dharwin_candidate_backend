@@ -13,8 +13,10 @@ const calculateProfileCompletion = (candidate) => {
   let completion = 30; // Base 30% when user registers (name, email, phone)
   
   // Additional Personal/Academic Information (10%)
-  if (candidate.shortBio || candidate.sevisId || candidate.ead || 
-      candidate.degree || candidate.supervisorName || candidate.supervisorContact) {
+  if (candidate.shortBio || candidate.sevisId || candidate.ead || candidate.visaType || candidate.countryCode ||
+      candidate.degree || candidate.supervisorName || candidate.supervisorContact || candidate.supervisorCountryCode ||
+      candidate.salaryRange || (candidate.address?.streetAddress && candidate.address?.city && 
+      candidate.address?.state && candidate.address?.zipCode && candidate.address?.country)) {
     completion += 10;
   }
   
@@ -80,9 +82,34 @@ const createCandidate = async (ownerId, payload) => {
     }
   };
 
+  // Check for duplicate emails within the batch
+  const emailsInBatch = new Set();
+  for (let i = 0; i < candidatesData.length; i++) {
+    const email = candidatesData[i].email;
+    if (emailsInBatch.has(email)) {
+      results.failed.push({
+        index: i,
+        candidateData: {
+          fullName: candidatesData[i].fullName,
+          email: candidatesData[i].email
+        },
+        error: `Duplicate email ${email} found in the same batch`,
+        message: `Failed to create candidate: Duplicate email ${email} found in the same batch`
+      });
+      results.summary.failed++;
+      continue;
+    }
+    emailsInBatch.add(email);
+  }
+
   // Process each candidate
   for (let i = 0; i < candidatesData.length; i++) {
     const candidateData = candidatesData[i];
+    
+    // Skip if this candidate already failed due to duplicate email in batch
+    if (results.failed.some(f => f.index === i)) {
+      continue;
+    }
     
     try {
       // If admin provided password, create or reuse a user for candidate's email
@@ -103,6 +130,12 @@ const createCandidate = async (ownerId, payload) => {
           });
           resolvedOwnerId = user.id;
         }
+      }
+      
+      // Check if candidate already exists with the same email
+      const existingCandidate = await Candidate.findOne({ email: candidateData.email });
+      if (existingCandidate) {
+        throw new ApiError(httpStatus.CONFLICT, `Candidate with email ${candidateData.email} already exists`);
       }
       
       // Check if all required data is provided for auto email verification
@@ -217,6 +250,8 @@ const exportAllCandidates = async (filters = {}) => {
     shortBio: candidate.shortBio || '',
     sevisId: candidate.sevisId || '',
     ead: candidate.ead || '',
+    visaType: candidate.visaType || '',
+    customVisaType: candidate.customVisaType || '',
     degree: candidate.degree || '',
     supervisorName: candidate.supervisorName || '',
     supervisorContact: candidate.supervisorContact || '',
@@ -507,26 +542,56 @@ const getPublicCandidateProfile = async (candidateId, token, data) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'Candidate not found');
   }
   
-  // Prepare candidate data for public display
+  // Prepare candidate data for public display with complete information
   const candidateData = {
+    // Basic Information
     fullName: candidate.fullName,
     email: candidate.email,
     phoneNumber: candidate.phoneNumber,
+    countryCode: candidate.countryCode,
+    
+    // Profile Picture
+    profilePicture: candidate.profilePicture,
+    
+    // Personal Information
     shortBio: candidate.shortBio,
     sevisId: candidate.sevisId,
     ead: candidate.ead,
+    visaType: candidate.visaType,
+    customVisaType: candidate.customVisaType,
     degree: candidate.degree,
     supervisorName: candidate.supervisorName,
     supervisorContact: candidate.supervisorContact,
+    supervisorCountryCode: candidate.supervisorCountryCode,
+    
+    // Professional Information
+    salaryRange: candidate.salaryRange,
+    
+    // Address Information
+    address: candidate.address,
+    
+    // Profile Completion Status
+    isProfileCompleted: candidate.isProfileCompleted,
+    isCompleted: candidate.isCompleted,
+    
+    // Dynamic Sections
     qualifications: candidate.qualifications,
     experiences: candidate.experiences,
     skills: candidate.skills,
     socialLinks: candidate.socialLinks,
+    
+    // Documents and Salary Slips (conditional based on withDoc flag)
     documents: shareData.withDoc ? candidate.documents : [],
     salarySlips: shareData.withDoc ? candidate.salarySlips : [],
+    
+    // Sharing Information
     withDoc: shareData.withDoc,
     sharedBy: shareData.sharedBy,
-    sharedAt: shareData.sharedAt
+    sharedAt: shareData.sharedAt,
+    
+    // Timestamps
+    createdAt: candidate.createdAt,
+    updatedAt: candidate.updatedAt
   };
   
   return candidateData;

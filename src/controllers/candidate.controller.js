@@ -106,18 +106,30 @@ const exportProfile = catchAsync(async (req, res) => {
     `Name: ${candidate.fullName}`,
     `Email: ${candidate.email}`,
     `Phone: ${candidate.phoneNumber}`,
+    candidate.profilePicture?.url ? `Profile Picture: ${candidate.profilePicture.url}` : null,
     candidate.shortBio ? `Bio: ${candidate.shortBio}` : null,
     candidate.sevisId ? `SEVIS ID: ${candidate.sevisId}` : null,
     candidate.ead ? `EAD: ${candidate.ead}` : null,
+    candidate.visaType ? `Visa Type: ${candidate.visaType}` : null,
+    candidate.customVisaType ? `Custom Visa Type: ${candidate.customVisaType}` : null,
+    candidate.countryCode ? `Country Code: ${candidate.countryCode}` : null,
     candidate.degree ? `Degree: ${candidate.degree}` : null,
     candidate.supervisorName ? `Supervisor: ${candidate.supervisorName}` : null,
     candidate.supervisorContact ? `Supervisor Contact: ${candidate.supervisorContact}` : null,
+    candidate.supervisorCountryCode ? `Supervisor Country Code: ${candidate.supervisorCountryCode}` : null,
+    candidate.salaryRange ? `Salary Range: ${candidate.salaryRange}` : null,
+    candidate.address?.streetAddress ? `Street Address: ${candidate.address.streetAddress}` : null,
+    candidate.address?.streetAddress2 ? `Street Address 2: ${candidate.address.streetAddress2}` : null,
+    candidate.address?.city ? `City: ${candidate.address.city}` : null,
+    candidate.address?.state ? `State: ${candidate.address.state}` : null,
+    candidate.address?.zipCode ? `Zip Code: ${candidate.address.zipCode}` : null,
+    candidate.address?.country ? `Country: ${candidate.address.country}` : null,
     '',
     'Qualifications:',
     ...candidate.qualifications.map((q, i) => `  ${i + 1}. ${q.degree} - ${q.institute} (${q.startYear || ''}-${q.endYear || ''})`),
     '',
     'Experiences:',
-    ...candidate.experiences.map((e, i) => `  ${i + 1}. ${e.role} @ ${e.company} (${e.startDate ? new Date(e.startDate).getFullYear() : ''}-${e.endDate ? new Date(e.endDate).getFullYear() : ''})`),
+    ...candidate.experiences.map((e, i) => `  ${i + 1}. ${e.role} @ ${e.company} (${e.startDate ? new Date(e.startDate).getFullYear() : ''}-${e.currentlyWorking ? 'Present' : (e.endDate ? new Date(e.endDate).getFullYear() : '')})`),
     '',
     'Social Links:',
     ...candidate.socialLinks.map((s, i) => `  ${i + 1}. ${s.platform}: ${s.url}`),
@@ -169,12 +181,24 @@ const generateCSVFormat = (exportData) => {
     'Full Name',
     'Email',
     'Phone Number',
+    'Profile Picture',
     'Short Bio',
     'SEVIS ID',
     'EAD',
+    'Visa Type',
+    'Custom Visa Type',
+    'Country Code',
     'Degree',
     'Supervisor Name',
     'Supervisor Contact',
+    'Supervisor Country Code',
+    'Salary Range',
+    'Street Address',
+    'Street Address 2',
+    'City',
+    'State',
+    'Zip Code',
+    'Country',
     'Owner',
     'Owner Email',
     'Admin',
@@ -196,12 +220,24 @@ const generateCSVFormat = (exportData) => {
     `"${candidate.fullName || ''}"`,
     candidate.email || '',
     candidate.phoneNumber || '',
+    candidate.profilePicture?.url || '',
     `"${(candidate.shortBio || '').replace(/"/g, '""')}"`,
     candidate.sevisId || '',
     candidate.ead || '',
+    candidate.visaType || '',
+    candidate.customVisaType || '',
+    candidate.countryCode || '',
     `"${candidate.degree || ''}"`,
     `"${candidate.supervisorName || ''}"`,
     candidate.supervisorContact || '',
+    candidate.supervisorCountryCode || '',
+    candidate.salaryRange || '',
+    candidate.address?.streetAddress || '',
+    candidate.address?.streetAddress2 || '',
+    candidate.address?.city || '',
+    candidate.address?.state || '',
+    candidate.address?.zipCode || '',
+    candidate.address?.country || '',
     `"${candidate.owner || ''}"`,
     candidate.ownerEmail || '',
     `"${candidate.adminId || ''}"`,
@@ -211,7 +247,7 @@ const generateCSVFormat = (exportData) => {
     new Date(candidate.createdAt).toLocaleDateString(),
     new Date(candidate.updatedAt).toLocaleDateString(),
     `"${candidate.qualifications.map(q => `${q.degree} - ${q.institute}`).join('; ')}"`,
-    `"${candidate.experiences.map(e => `${e.role} @ ${e.company}`).join('; ')}"`,
+    `"${candidate.experiences.map(e => `${e.role} @ ${e.company}${e.currentlyWorking ? ' (Currently Working)' : ''}`).join('; ')}"`,
     `"${candidate.skills.map(s => `${s.name} (${s.level})`).join('; ')}"`,
     `"${candidate.socialLinks.map(sl => `${sl.platform}: ${sl.url}`).join('; ')}"`,
     `"${candidate.documents.map(d => d.label || d.originalName).join('; ')}"`,
@@ -417,6 +453,34 @@ const generatePublicProfileHTML = (candidateData) => {
                 bottom: 0;
                 background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
                 opacity: 0.3;
+            }
+            
+            .profile-header {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 20px;
+                position: relative;
+                z-index: 1;
+            }
+            
+            .profile-picture {
+                width: 120px;
+                height: 120px;
+                border-radius: 50%;
+                overflow: hidden;
+                border: 4px solid rgba(255, 255, 255, 0.2);
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            }
+            
+            .profile-picture img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+            
+            .profile-info {
+                text-align: left;
             }
             
             .logo {
@@ -652,6 +716,21 @@ const generatePublicProfileHTML = (candidateData) => {
                     padding: 30px 20px;
                 }
                 
+                .profile-header {
+                    flex-direction: column;
+                    text-align: center;
+                    gap: 15px;
+                }
+                
+                .profile-picture {
+                    width: 100px;
+                    height: 100px;
+                }
+                
+                .profile-info {
+                    text-align: center;
+                }
+                
                 .profile-title {
                     font-size: 24px;
                 }
@@ -685,8 +764,17 @@ const generatePublicProfileHTML = (candidateData) => {
                 <div class="logo">
                     <img src="https://main.d17v4yz0vw03r0.amplifyapp.com/assets/images/company-logos/logo.jpeg" alt="Dharwin" />
                 </div>
-                <h1 class="profile-title">${candidateData.fullName}</h1>
-                <p class="profile-subtitle">Candidate Profile</p>
+                <div class="profile-header">
+                    ${candidateData.profilePicture?.url ? `
+                    <div class="profile-picture">
+                        <img src="${candidateData.profilePicture.url}" alt="Profile Picture" />
+                    </div>
+                    ` : ''}
+                    <div class="profile-info">
+                        <h1 class="profile-title">${candidateData.fullName}</h1>
+                        <p class="profile-subtitle">Candidate Profile</p>
+                    </div>
+                </div>
             </div>
             
             <div class="main-content">
@@ -725,6 +813,27 @@ const generatePublicProfileHTML = (candidateData) => {
                         </div>
                         ` : ''}
                         
+                        ${candidateData.visaType ? `
+                        <div class="info-item">
+                            <div class="info-label">Visa Type</div>
+                            <div class="info-value">${candidateData.visaType}</div>
+                        </div>
+                        ` : ''}
+                        
+                        ${candidateData.customVisaType ? `
+                        <div class="info-item">
+                            <div class="info-label">Custom Visa Type</div>
+                            <div class="info-value">${candidateData.customVisaType}</div>
+                        </div>
+                        ` : ''}
+                        
+                        ${candidateData.countryCode ? `
+                        <div class="info-item">
+                            <div class="info-label">Country Code</div>
+                            <div class="info-value">${candidateData.countryCode}</div>
+                        </div>
+                        ` : ''}
+                        
                         ${candidateData.degree ? `
                         <div class="info-item">
                             <div class="info-label">Degree</div>
@@ -743,6 +852,62 @@ const generatePublicProfileHTML = (candidateData) => {
                         <div class="info-item">
                             <div class="info-label">Supervisor Contact</div>
                             <div class="info-value">${candidateData.supervisorContact}</div>
+                        </div>
+                        ` : ''}
+                        
+                        ${candidateData.supervisorCountryCode ? `
+                        <div class="info-item">
+                            <div class="info-label">Supervisor Country Code</div>
+                            <div class="info-value">${candidateData.supervisorCountryCode}</div>
+                        </div>
+                        ` : ''}
+                        
+                        ${candidateData.salaryRange ? `
+                        <div class="info-item">
+                            <div class="info-label">Salary Range</div>
+                            <div class="info-value">${candidateData.salaryRange}</div>
+                        </div>
+                        ` : ''}
+                        
+                        ${candidateData.address?.streetAddress ? `
+                        <div class="info-item">
+                            <div class="info-label">Street Address</div>
+                            <div class="info-value">${candidateData.address.streetAddress}</div>
+                        </div>
+                        ` : ''}
+                        
+                        ${candidateData.address?.streetAddress2 ? `
+                        <div class="info-item">
+                            <div class="info-label">Street Address 2</div>
+                            <div class="info-value">${candidateData.address.streetAddress2}</div>
+                        </div>
+                        ` : ''}
+                        
+                        ${candidateData.address?.city ? `
+                        <div class="info-item">
+                            <div class="info-label">City</div>
+                            <div class="info-value">${candidateData.address.city}</div>
+                        </div>
+                        ` : ''}
+                        
+                        ${candidateData.address?.state ? `
+                        <div class="info-item">
+                            <div class="info-label">State</div>
+                            <div class="info-value">${candidateData.address.state}</div>
+                        </div>
+                        ` : ''}
+                        
+                        ${candidateData.address?.zipCode ? `
+                        <div class="info-item">
+                            <div class="info-label">Zip Code</div>
+                            <div class="info-value">${candidateData.address.zipCode}</div>
+                        </div>
+                        ` : ''}
+                        
+                        ${candidateData.address?.country ? `
+                        <div class="info-item">
+                            <div class="info-label">Country</div>
+                            <div class="info-value">${candidateData.address.country}</div>
                         </div>
                         ` : ''}
                     </div>
@@ -782,7 +947,7 @@ const generatePublicProfileHTML = (candidateData) => {
                         <div class="list-item">
                             <div class="list-item-title">${e.role}</div>
                             <div class="list-item-subtitle">${e.company}</div>
-                            ${e.startDate || e.endDate ? `<div class="list-item-subtitle">${e.startDate ? new Date(e.startDate).toLocaleDateString() : ''} - ${e.endDate ? new Date(e.endDate).toLocaleDateString() : 'Present'}</div>` : ''}
+                            ${e.startDate || e.endDate || e.currentlyWorking ? `<div class="list-item-subtitle">${e.startDate ? new Date(e.startDate).toLocaleDateString() : ''} - ${e.currentlyWorking ? 'Present' : (e.endDate ? new Date(e.endDate).toLocaleDateString() : '')}</div>` : ''}
                             ${e.description ? `<div class="list-item-description">${e.description}</div>` : ''}
                         </div>
                         `).join('')}
