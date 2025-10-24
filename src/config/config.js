@@ -28,6 +28,8 @@ const envVarsSchema = Joi.object()
     AWS_SECRET_ACCESS_KEY: Joi.string().description('AWS secret access key'),
     AWS_REGION: Joi.string().default('us-east-1').description('AWS region'),
     AWS_S3_BUCKET_NAME: Joi.string().description('AWS S3 bucket name'),
+    AGORA_APP_ID: Joi.string().required().description('Agora App ID'),
+    AGORA_APP_CERTIFICATE: Joi.string().required().description('Agora App Certificate'),
   })
   .unknown();
 
@@ -72,6 +74,10 @@ const config = {
     secretAccessKey: envVars.AWS_SECRET_ACCESS_KEY,
     region: envVars.AWS_REGION,
     bucketName: envVars.AWS_S3_BUCKET_NAME,
+  },
+  agora: {
+    appId: envVars.AGORA_APP_ID,
+    appCertificate: envVars.AGORA_APP_CERTIFICATE,
   },
 };
 
