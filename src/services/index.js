@@ -2,5 +2,5 @@
 export { default as emailService } from './email.service.js';
 // export { default as tokenService } from './token.service.js';
 // export { default as userService } from './user.service.js';
-export * as agoraService from './agora.service.js';
+export * as meetingService from './meeting.service.js';
 
