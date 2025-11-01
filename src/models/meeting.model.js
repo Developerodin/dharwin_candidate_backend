@@ -57,7 +57,9 @@ const meetingSchema = new mongoose.Schema(
     totalJoined: { type: Number, default: 0 },
     currentParticipants: { type: Number, default: 0 },
     
-    // Meeting end tracking
+    // Meeting timing tracking
+    startedAt: { type: Date },
+    expiresAt: { type: Date },
     endedAt: { type: Date },
     endedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     
@@ -78,6 +80,7 @@ meetingSchema.index({ joinToken: 1 });
 meetingSchema.index({ createdBy: 1 });
 meetingSchema.index({ status: 1 });
 meetingSchema.index({ scheduledAt: 1 });
+meetingSchema.index({ expiresAt: 1 });
 
 // Virtual for meeting duration in seconds
 meetingSchema.virtual('durationInSeconds').get(function() {
@@ -92,6 +95,9 @@ meetingSchema.methods.isActive = function() {
 // Method to check if meeting can be joined
 meetingSchema.methods.canJoin = function() {
   const now = new Date();
+  if (this.expiresAt && this.expiresAt <= now) {
+    return false;
+  }
   return (
     this.status === 'scheduled' || 
     this.status === 'active'
@@ -99,6 +105,37 @@ meetingSchema.methods.canJoin = function() {
     !this.scheduledAt || 
     this.scheduledAt <= now
   );
+};
+
+// Method to check if meeting has expired
+meetingSchema.methods.isExpired = function() {
+  const now = new Date();
+  return this.expiresAt && this.expiresAt <= now && this.status !== 'ended' && this.status !== 'cancelled';
+};
+
+// Method to calculate and set expiry time based on duration
+meetingSchema.methods.calculateExpiryTime = function() {
+  const baseTime = this.startedAt || this.scheduledAt || new Date();
+  const durationMs = this.duration * 60 * 1000;
+  this.expiresAt = new Date(baseTime.getTime() + durationMs);
+  return this.expiresAt;
+};
+
+// Method to automatically end meeting if expired
+meetingSchema.methods.autoEndIfExpired = function() {
+  if (this.isExpired() && this.status === 'active') {
+    this.status = 'ended';
+    this.endedAt = new Date();
+    this.participants.forEach(participant => {
+      if (participant.isActive) {
+        participant.isActive = false;
+        participant.leftAt = new Date();
+      }
+    });
+    this.currentParticipants = 0;
+    return true;
+  }
+  return false;
 };
 
 // Method to add participant
@@ -159,6 +196,11 @@ meetingSchema.pre('save', async function(next) {
     
     // Set Agora App ID from environment
     this.appId = process.env.AGORA_APP_ID;
+    
+    // Pre-calculate expiry if scheduled
+    if (this.scheduledAt && this.duration) {
+      this.calculateExpiryTime();
+    }
   }
   next();
 });

@@ -61,7 +61,11 @@ const createMeeting = async (meetingData, userId) => {
  * @returns {Promise<Meeting>}
  */
 const getMeetingById = async (meetingId) => {
-  return Meeting.findOne({ meetingId });
+  const meeting = await Meeting.findOne({ meetingId });
+  if (meeting && meeting.autoEndIfExpired()) {
+    await meeting.save();
+  }
+  return meeting;
 };
 
 /**
@@ -70,7 +74,11 @@ const getMeetingById = async (meetingId) => {
  * @returns {Promise<Meeting>}
  */
 const getMeetingByJoinToken = async (joinToken) => {
-  return Meeting.findOne({ joinToken });
+  const meeting = await Meeting.findOne({ joinToken });
+  if (meeting && meeting.autoEndIfExpired()) {
+    await meeting.save();
+  }
+  return meeting;
 };
 
 /**
@@ -114,6 +122,8 @@ const joinMeeting = async (meetingId, joinToken, name, email) => {
   // Update meeting status to active if it's the first participant
   if (meeting.status === 'scheduled' && meeting.currentParticipants === 1) {
     meeting.status = 'active';
+    meeting.startedAt = new Date();
+    meeting.calculateExpiryTime();
   }
   
   await meeting.save();
