@@ -5,6 +5,23 @@ import { createCandidate } from '../services/candidate.service.js';
 import { generateAuthTokens,generateResetPasswordToken,generateVerifyEmailToken } from '../services/token.service.js';
 import { loginUserWithEmailAndPassword,logout as logout2,refreshAuth,resetPassword as resetPassword2,verifyEmail as verifyEmail2  } from '../services/auth.service.js';
 import { sendResetPasswordEmail,sendVerificationEmail as sendVerificationEmail2,sendCandidateInvitationEmail  } from '../services/email.service.js';
+import { createLoginLog } from '../services/loginLog.service.js';
+
+// Helper function to get IP address from request
+const getIpAddress = (req) => {
+  return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+         req.headers['x-real-ip'] || 
+         req.connection?.remoteAddress || 
+         req.socket?.remoteAddress ||
+         (req.connection?.socket ? req.connection.socket.remoteAddress : null) ||
+         req.ip ||
+         'Unknown';
+};
+
+// Helper function to get user agent from request
+const getUserAgent = (req) => {
+  return req.headers['user-agent'] || 'Unknown';
+};
 // import { authService, userService, tokenService, emailService } from '../services/index.js';
 // import { authService, userService, tokenService, emailService } from '../services';
 
@@ -40,7 +57,20 @@ const register = catchAsync(async (req, res) => {
 const login = catchAsync(async (req, res) => {
   const { email, password } = req.body;
   const user = await loginUserWithEmailAndPassword(email, password);
-  const tokens = await generateAuthTokens(user);
+  
+  // Create login log entry
+  const ipAddress = getIpAddress(req);
+  const userAgent = getUserAgent(req);
+  const loginLog = await createLoginLog({
+    user: user._id,
+    email: user.email,
+    role: user.role,
+    ipAddress,
+    userAgent,
+  });
+  
+  // Generate tokens with login log ID
+  const tokens = await generateAuthTokens(user, loginLog._id);
   res.send({ user, tokens });
 });
 

@@ -4,6 +4,8 @@ import {getUserByEmail,getUserById,updateUserById} from './user.service.js';
 import Token from '../models/token.model.js';
 import ApiError from '../utils/ApiError.js';
 import { tokenTypes } from '../config/tokens.js';
+import { updateLogoutTime } from './loginLog.service.js';
+import logger from '../config/logger.js';
 
 /**
  * Login with username and password
@@ -35,6 +37,17 @@ const logout = async (refreshToken) => {
   if (!refreshTokenDoc) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Not found');
   }
+  
+  // Update logout time in login log if loginLogId exists
+  if (refreshTokenDoc.loginLogId) {
+    try {
+      await updateLogoutTime(refreshTokenDoc.loginLogId);
+    } catch (error) {
+      // Log error but don't fail logout if login log update fails
+      logger.error('Error updating login log logout time:', error);
+    }
+  }
+  
   await refreshTokenDoc.remove();
 };
 

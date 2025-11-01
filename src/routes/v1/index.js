@@ -4,6 +4,7 @@ import userRoute from './user.route.js';
 import candidateRoute from './candidate.route.js';
 import uploadRoute from './upload.route.js';
 import meetingRoute from './meeting.route.js';
+import loginLogRoute from './loginLog.route.js';
 import docsRoute from './docs.route.js';
 import config from '../../config/config.js';
 
@@ -29,6 +30,10 @@ const defaultRoutes = [
   {
     path: '/meetings',
     route: meetingRoute,
+  },
+  {
+    path: '/login-logs',
+    route: loginLogRoute,
   },
 ];
 

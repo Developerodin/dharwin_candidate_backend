@@ -34,15 +34,17 @@ const generateToken = (userId, expires, type, secret = config.jwt.secret) => {
  * @param {Moment} expires
  * @param {string} type
  * @param {boolean} [blacklisted]
+ * @param {ObjectId} [loginLogId] - Login log ID (for refresh tokens)
  * @returns {Promise<Token>}
  */
-const saveToken = async (token, userId, expires, type, blacklisted = false) => {
+const saveToken = async (token, userId, expires, type, blacklisted = false, loginLogId = null) => {
   const tokenDoc = await Token.create({
     token,
     user: userId,
     expires: expires.toDate(),
     type,
     blacklisted,
+    loginLogId,
   });
   return tokenDoc;
 };
@@ -65,15 +67,16 @@ const verifyToken = async (token, type) => {
 /**
  * Generate auth tokens
  * @param {User} user
+ * @param {ObjectId} [loginLogId] - Login log ID to associate with refresh token
  * @returns {Promise<Object>}
  */
-const generateAuthTokens = async (user) => {
+const generateAuthTokens = async (user, loginLogId = null) => {
   const accessTokenExpires = moment().add(config.jwt.accessExpirationMinutes, 'minutes');
   const accessToken = generateToken(user.id, accessTokenExpires, tokenTypes.ACCESS);
 
   const refreshTokenExpires = moment().add(config.jwt.refreshExpirationDays, 'days');
   const refreshToken = generateToken(user.id, refreshTokenExpires, tokenTypes.REFRESH);
-  await saveToken(refreshToken, user.id, refreshTokenExpires, tokenTypes.REFRESH);
+  await saveToken(refreshToken, user.id, refreshTokenExpires, tokenTypes.REFRESH, false, loginLogId);
 
   return {
     access: {

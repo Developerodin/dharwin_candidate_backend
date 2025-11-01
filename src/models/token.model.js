@@ -28,6 +28,11 @@ const tokenSchema = mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    loginLogId: {
+      type: mongoose.SchemaTypes.ObjectId,
+      ref: 'LoginLog',
+      default: null,
+    },
   },
   {
     timestamps: true,
