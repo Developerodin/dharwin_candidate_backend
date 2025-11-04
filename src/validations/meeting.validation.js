@@ -10,6 +10,16 @@ const createMeeting = {
     allowGuestJoin: Joi.boolean().default(true).description('Allow guest participants'),
     requireApproval: Joi.boolean().default(false).description('Require approval for joining'),
     isRecurring: Joi.boolean().default(false).description('Is recurring meeting'),
+    host: Joi.object({
+      name: Joi.string().min(1).max(100).required().description('Host name'),
+      email: Joi.string().email().required().description('Host email'),
+    }).optional().description('Initial host details'),
+    hosts: Joi.array().items(
+      Joi.object({
+        name: Joi.string().min(1).max(100).required().description('Host name'),
+        email: Joi.string().email().required().description('Host email'),
+      })
+    ).optional().description('List of hosts'),
   }),
 };
 

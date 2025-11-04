@@ -47,9 +47,32 @@ const generateRtcTokenWithAccount = (channelName, account, role = RtcRole.PUBLIS
  * @returns {Promise<Meeting>}
  */
 const createMeeting = async (meetingData, userId) => {
+  const { host, hosts, ...rest } = meetingData || {};
+  const normalizedHosts = [];
+  if (host && host.email) {
+    normalizedHosts.push({ name: host.name, email: String(host.email).toLowerCase() });
+  }
+  if (Array.isArray(hosts)) {
+    for (const h of hosts) {
+      if (h && h.email) {
+        normalizedHosts.push({ name: h.name, email: String(h.email).toLowerCase() });
+      }
+    }
+  }
   const meeting = await Meeting.create({
-    ...meetingData,
+    ...rest,
     createdBy: userId,
+    ...(normalizedHosts.length
+      ? {
+          hostParticipants: normalizedHosts.map((h) => ({
+            name: h.name,
+            email: h.email,
+            role: 'host',
+            joinedAt: undefined,
+            isActive: false,
+          })),
+        }
+      : {}),
   });
   
   return meeting;
