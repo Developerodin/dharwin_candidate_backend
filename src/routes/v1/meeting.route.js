@@ -500,4 +500,89 @@ router.post('/:meetingId/end', auth(), validate(meetingValidation.endMeeting), m
  */
 router.get('/:meetingId/info', validate(meetingValidation.getMeetingInfo), meetingController.getMeetingInfo);
 
+/**
+ * @swagger
+ * /meetings/{meetingId}/screen-share-token:
+ *   post:
+ *     summary: Get screen share token
+ *     description: Generate Agora token for screen sharing (no authentication required)
+ *     tags: [Meetings]
+ *     parameters:
+ *       - in: path
+ *         name: meetingId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Meeting ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - joinToken
+ *               - screenShareUid
+ *               - email
+ *             properties:
+ *               joinToken:
+ *                 type: string
+ *                 description: Meeting join token
+ *                 example: "abc123def456"
+ *               screenShareUid:
+ *                 oneOf:
+ *                   - type: string
+ *                   - type: number
+ *                 description: Screen share UID (number or string)
+ *                 example: "12345"
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: Participant email
+ *                 example: "john.doe@example.com"
+ *     responses:
+ *       200:
+ *         description: Screen share token generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     agoraToken:
+ *                       type: object
+ *                       properties:
+ *                         token:
+ *                           type: string
+ *                           description: Agora token for screen sharing
+ *                         channelName:
+ *                           type: string
+ *                           description: Agora channel name
+ *                         account:
+ *                           type: string
+ *                           description: Screen share UID
+ *                         role:
+ *                           type: number
+ *                           description: User role (1 for publisher)
+ *                         expirationTime:
+ *                           type: number
+ *                           description: Token expiration timestamp
+ *                         appId:
+ *                           type: string
+ *                           description: Agora App ID
+ *                 message:
+ *                   type: string
+ *                   example: "Screen share token generated successfully"
+ *       400:
+ *         description: Bad request - Invalid meeting ID
+ *       404:
+ *         description: Meeting not found, invalid token, or participant not found
+ */
+router.post('/:meetingId/screen-share-token', validate(meetingValidation.getScreenShareToken), meetingController.getScreenShareToken);
+
 export default router;

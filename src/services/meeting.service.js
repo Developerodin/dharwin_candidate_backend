@@ -337,6 +337,47 @@ const deleteMeeting = async (meetingId, userId) => {
   await meeting.deleteOne();
 };
 
+/**
+ * Get screen share token
+ * @param {string} meetingId - Meeting ID
+ * @param {string} joinToken - Join token
+ * @param {string|number} screenShareUid - Screen share UID
+ * @param {string} email - Participant email
+ * @returns {Promise<Object>}
+ */
+const getScreenShareToken = async (meetingId, joinToken, screenShareUid, email) => {
+  const meeting = await getMeetingByJoinToken(joinToken);
+  
+  if (!meeting) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Meeting not found or invalid token');
+  }
+  
+  if (meeting.meetingId !== meetingId) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid meeting ID');
+  }
+  
+  // Validate that the participant with this email exists in the meeting
+  const participant = meeting.participants.find(p => p.email === email.toLowerCase());
+  if (!participant) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Participant not found in meeting');
+  }
+  
+  // Convert screenShareUid to string for Agora token generation
+  const account = String(screenShareUid);
+  
+  // Generate Agora token for screen sharing (publisher role)
+  const agoraToken = generateRtcTokenWithAccount(
+    meeting.channelName,
+    account,
+    RtcRole.PUBLISHER, // Publisher role for screen sharing
+    3600 // 1 hour expiration
+  );
+  
+  return {
+    agoraToken: agoraToken,
+  };
+};
+
 export {
   createMeeting,
   getMeetingById,
@@ -348,4 +389,5 @@ export {
   getUserMeetings,
   updateMeeting,
   deleteMeeting,
+  getScreenShareToken,
 };

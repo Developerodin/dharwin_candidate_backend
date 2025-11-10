@@ -101,6 +101,20 @@ const getMeetingInfo = {
   }),
 };
 
+const getScreenShareToken = {
+  params: Joi.object().keys({
+    meetingId: Joi.string().required().description('Meeting ID'),
+  }),
+  body: Joi.object().keys({
+    joinToken: Joi.string().required().description('Meeting join token'),
+    screenShareUid: Joi.alternatives().try(
+      Joi.string(),
+      Joi.number()
+    ).required().description('Screen share UID (number or string)'),
+    email: Joi.string().required().email().description('Participant email'),
+  }),
+};
+
 export {
   createMeeting,
   getMeeting,
@@ -112,4 +126,5 @@ export {
   updateMeeting,
   deleteMeeting,
   getMeetingInfo,
+  getScreenShareToken,
 };

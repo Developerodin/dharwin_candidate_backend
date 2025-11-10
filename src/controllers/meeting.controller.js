@@ -11,6 +11,7 @@ import {
   getUserMeetings,
   updateMeeting,
   deleteMeeting,
+  getScreenShareToken as getScreenShareTokenService,
 } from '../services/meeting.service.js';
 
 /**
@@ -211,6 +212,26 @@ const getMeetingInfo = catchAsync(async (req, res) => {
   });
 });
 
+/**
+ * Get screen share token
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+const getScreenShareToken = catchAsync(async (req, res) => {
+  const { meetingId } = req.params;
+  const { joinToken, screenShareUid, email } = req.body;
+  
+  const result = await getScreenShareTokenService(meetingId, joinToken, screenShareUid, email);
+  
+  res.status(httpStatus.OK).json({
+    success: true,
+    data: {
+      agoraToken: result.agoraToken,
+    },
+    message: 'Screen share token generated successfully',
+  });
+});
+
 export {
   create,
   get,
@@ -222,4 +243,5 @@ export {
   update,
   remove,
   getMeetingInfo,
+  getScreenShareToken,
 };
