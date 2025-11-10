@@ -187,8 +187,8 @@ meetingSchema.pre('save', async function(next) {
     this.joinToken = crypto.randomBytes(16).toString('hex');
     
     // Generate meeting URL
-    // const baseUrl = process.env.FRONTEND_URL || 'https://main.d17v4yz0vw03r0.amplifyapp.com';
-    const baseUrl = 'http://localhost:3001';
+    const baseUrl = process.env.FRONTEND_URL || 'https://main.d17v4yz0vw03r0.amplifyapp.com';
+    // const baseUrl = 'http://localhost:3001';
     this.meetingUrl = `${baseUrl}/meeting/${this.meetingId}?token=${this.joinToken}`;
     
     // Generate unique channel name
