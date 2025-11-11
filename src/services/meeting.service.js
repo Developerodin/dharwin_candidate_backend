@@ -379,6 +379,7 @@ const getScreenShareToken = async (meetingId, joinToken, screenShareUid, email) 
 };
 
 export {
+  generateRtcTokenWithAccount,
   createMeeting,
   getMeetingById,
   getMeetingByJoinToken,

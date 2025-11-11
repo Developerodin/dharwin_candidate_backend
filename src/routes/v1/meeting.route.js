@@ -1,8 +1,11 @@
 import express from 'express';
 import auth from '../../middlewares/auth.js';
 import validate from '../../middlewares/validate.js';
+import { uploadVideo } from '../../middlewares/upload.js';
 import * as meetingValidation from '../../validations/meeting.validation.js';
 import * as meetingController from '../../controllers/meeting.controller.js';
+import * as recordingValidation from '../../validations/recording.validation.js';
+import * as recordingController from '../../controllers/recording.controller.js';
 
 const router = express.Router();
 
@@ -584,5 +587,244 @@ router.get('/:meetingId/info', validate(meetingValidation.getMeetingInfo), meeti
  *         description: Meeting not found, invalid token, or participant not found
  */
 router.post('/:meetingId/screen-share-token', validate(meetingValidation.getScreenShareToken), meetingController.getScreenShareToken);
+
+/**
+ * @swagger
+ * /meetings/{meetingId}/recording/status:
+ *   get:
+ *     summary: Get recording status
+ *     description: Get the current recording status for a meeting
+ *     tags: [Meetings, Recording]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: meetingId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Meeting ID
+ *     responses:
+ *       200:
+ *         description: Recording status retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     meetingId:
+ *                       type: string
+ *                     recording:
+ *                       type: object
+ *       401:
+ *         description: Unauthorized - Please authenticate
+ *       404:
+ *         description: Meeting not found
+ */
+router.get('/:meetingId/recording/status', auth(), validate(recordingValidation.getRecordingStatus), recordingController.getStatus);
+
+/**
+ * @swagger
+ * /meetings/{meetingId}/recording/start:
+ *   post:
+ *     summary: Start recording
+ *     description: Start recording for a meeting
+ *     tags: [Meetings, Recording]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: meetingId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Meeting ID
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               format:
+ *                 type: string
+ *                 enum: [mp4, webm, m3u8]
+ *                 description: Recording format
+ *               resolution:
+ *                 type: string
+ *                 description: Recording resolution (e.g., 1280x720)
+ *               fps:
+ *                 type: integer
+ *                 minimum: 15
+ *                 maximum: 60
+ *                 description: Recording FPS
+ *               bitrate:
+ *                 type: integer
+ *                 minimum: 500
+ *                 maximum: 10000
+ *                 description: Recording bitrate in kbps
+ *     responses:
+ *       200:
+ *         description: Recording started successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *       400:
+ *         description: Bad request - Meeting not active or recording already in progress
+ *       403:
+ *         description: Forbidden - Only meeting creator can start recording
+ *       404:
+ *         description: Meeting not found
+ */
+router.post('/:meetingId/recording/start', auth(), validate(recordingValidation.startRecording), recordingController.start);
+
+/**
+ * @swagger
+ * /meetings/{meetingId}/recording/stop:
+ *   post:
+ *     summary: Stop recording
+ *     description: Stop recording for a meeting
+ *     tags: [Meetings, Recording]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: meetingId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Meeting ID
+ *     responses:
+ *       200:
+ *         description: Recording stopped successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *       400:
+ *         description: Bad request - No recording in progress
+ *       403:
+ *         description: Forbidden - Only meeting creator can stop recording
+ *       404:
+ *         description: Meeting not found
+ */
+router.post('/:meetingId/recording/stop', auth(), validate(recordingValidation.stopRecording), recordingController.stop);
+
+/**
+ * @swagger
+ * /meetings/{meetingId}/recording/download:
+ *   get:
+ *     summary: Get recording download URL
+ *     description: Get presigned URL for downloading the recording
+ *     tags: [Meetings, Recording]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: meetingId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Meeting ID
+ *     responses:
+ *       200:
+ *         description: Download URL generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     meetingId:
+ *                       type: string
+ *                     downloadUrl:
+ *                       type: string
+ *                     expiresIn:
+ *                       type: integer
+ *       400:
+ *         description: Bad request - Recording not available for download
+ *       403:
+ *         description: Forbidden - Only meeting creator can download recording
+ *       404:
+ *         description: Meeting not found
+ */
+router.get('/:meetingId/recording/download', auth(), validate(recordingValidation.getRecordingDownloadUrl), recordingController.getDownloadUrl);
+
+/**
+ * @swagger
+ * /meetings/{meetingId}/recording/upload:
+ *   post:
+ *     summary: Upload recording file from frontend
+ *     description: Upload a recording file from the frontend after recording is stopped
+ *     tags: [Meetings, Recording]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: meetingId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Meeting ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - file
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: Recording video file (MP4, WebM, MOV, AVI)
+ *     responses:
+ *       200:
+ *         description: Recording uploaded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     meetingId:
+ *                       type: string
+ *                     recording:
+ *                       type: object
+ *                     message:
+ *                       type: string
+ *       400:
+ *         description: Bad request - Invalid file or recording not stopped
+ *       403:
+ *         description: Forbidden - Only meeting creator can upload recording
+ *       404:
+ *         description: Meeting not found
+ */
+router.post('/:meetingId/recording/upload', auth(), uploadVideo('file'), recordingController.upload);
 
 export default router;

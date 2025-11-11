@@ -69,6 +69,32 @@ const meetingSchema = new mongoose.Schema(
       type: String, 
       enum: ['successful', 'unsuccessful', 'rescheduled', 'cancelled']
     },
+    
+    // Recording configuration
+    recording: {
+      enabled: { type: Boolean, default: false },
+      autoStart: { type: Boolean, default: false },
+      status: { 
+        type: String, 
+        enum: ['idle', 'starting', 'recording', 'stopping', 'completed', 'failed'], 
+        default: 'idle' 
+      },
+      startedAt: { type: Date },
+      stoppedAt: { type: Date },
+      duration: { type: Number }, // Duration in seconds
+      fileUrl: { type: String }, // S3 URL or path
+      fileKey: { type: String }, // S3 key
+      fileSize: { type: Number }, // File size in bytes
+      outputPath: { type: String }, // Local file path before S3 upload
+      format: { type: String, enum: ['mp4', 'webm', 'm3u8'], default: 'mp4' },
+      resolution: { type: String, default: '1280x720' },
+      fps: { type: Number, default: 30 },
+      bitrate: { type: Number, default: 2000 }, // kbps
+      error: { type: String }, // Error message if recording failed
+      recordingId: { type: String }, // Unique recording session ID
+      rtmpStreamId: { type: String }, // Agora RTMP stream ID
+      rtmpUrl: { type: String }, // RTMP stream URL
+    },
   },
   { timestamps: true }
 );
@@ -81,6 +107,8 @@ meetingSchema.index({ createdBy: 1 });
 meetingSchema.index({ status: 1 });
 meetingSchema.index({ scheduledAt: 1 });
 meetingSchema.index({ expiresAt: 1 });
+meetingSchema.index({ 'recording.recordingId': 1 });
+meetingSchema.index({ 'recording.status': 1 });
 
 // Virtual for meeting duration in seconds
 meetingSchema.virtual('durationInSeconds').get(function() {

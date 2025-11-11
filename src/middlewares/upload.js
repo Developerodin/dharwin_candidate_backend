@@ -82,4 +82,65 @@ const uploadMultiple = (fieldName = 'files', maxCount = 5) => {
   };
 };
 
-export { uploadSingle, uploadMultiple };
+// File filter for video and audio files
+const videoFileFilter = (req, file, cb) => {
+  const allowedVideoTypes = [
+    'video/mp4',
+    'video/webm',
+    'video/quicktime',
+    'video/x-msvideo',
+    'video/x-matroska',
+  ];
+  
+  const allowedAudioTypes = [
+    'audio/mpeg',
+    'audio/mp4',
+    'audio/wav',
+    'audio/ogg',
+    'audio/webm',
+    'audio/x-m4a',
+  ];
+  
+  const allowedTypes = [...allowedVideoTypes, ...allowedAudioTypes];
+
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new ApiError(
+      httpStatus.BAD_REQUEST, 
+      `File type ${file.mimetype} is not allowed. Allowed types: ${allowedTypes.join(', ')}`
+    ), false);
+  }
+};
+
+// Configure multer for video files (larger file size limit)
+const videoUpload = multer({
+  storage,
+  fileFilter: videoFileFilter,
+  limits: {
+    fileSize: 500 * 1024 * 1024, // 500MB limit for video files
+    files: 1, // Only 1 file per request
+  },
+});
+
+// Middleware for single video file upload
+const uploadVideo = (fieldName = 'file') => {
+  return (req, res, next) => {
+    videoUpload.single(fieldName)(req, res, (err) => {
+      if (err) {
+        if (err instanceof multer.MulterError) {
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            return next(new ApiError(httpStatus.BAD_REQUEST, 'File size too large. Maximum size is 500MB.'));
+          }
+          if (err.code === 'LIMIT_FILE_COUNT') {
+            return next(new ApiError(httpStatus.BAD_REQUEST, 'Only one file allowed per request.'));
+          }
+        }
+        return next(err);
+      }
+      next();
+    });
+  };
+};
+
+export { uploadSingle, uploadMultiple, uploadVideo };

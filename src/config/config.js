@@ -30,6 +30,15 @@ const envVarsSchema = Joi.object()
     AWS_S3_BUCKET_NAME: Joi.string().description('AWS S3 bucket name'),
     AGORA_APP_ID: Joi.string().required().description('Agora App ID'),
     AGORA_APP_CERTIFICATE: Joi.string().required().description('Agora App Certificate'),
+    AGORA_REST_API_CUSTOMER_ID: Joi.string().description('Agora REST API Customer ID'),
+    AGORA_REST_API_CUSTOMER_SECRET: Joi.string().description('Agora REST API Customer Secret'),
+    RECORDING_STORAGE_PATH: Joi.string().default('/tmp/recordings').description('Local storage path for recordings'),
+    RECORDING_MAX_DURATION: Joi.number().default(7200).description('Max recording duration in seconds'),
+    RECORDING_DEFAULT_FORMAT: Joi.string().default('mp4').description('Default recording format'),
+    RECORDING_DEFAULT_RESOLUTION: Joi.string().default('1280x720').description('Default recording resolution'),
+    RECORDING_DEFAULT_FPS: Joi.number().default(30).description('Default recording FPS'),
+    RECORDING_DEFAULT_BITRATE: Joi.number().default(2000).description('Default recording bitrate in kbps'),
+    RTMP_SERVER_URL: Joi.string().default('rtmp://localhost:1935/live').description('RTMP server URL'),
   })
   .unknown();
 
@@ -78,6 +87,17 @@ const config = {
   agora: {
     appId: envVars.AGORA_APP_ID,
     appCertificate: envVars.AGORA_APP_CERTIFICATE,
+    restApiCustomerId: envVars.AGORA_REST_API_CUSTOMER_ID,
+    restApiCustomerSecret: envVars.AGORA_REST_API_CUSTOMER_SECRET,
+  },
+  recording: {
+    storagePath: envVars.RECORDING_STORAGE_PATH,
+    maxDuration: envVars.RECORDING_MAX_DURATION,
+    defaultFormat: envVars.RECORDING_DEFAULT_FORMAT,
+    defaultResolution: envVars.RECORDING_DEFAULT_RESOLUTION,
+    defaultFps: envVars.RECORDING_DEFAULT_FPS,
+    defaultBitrate: envVars.RECORDING_DEFAULT_BITRATE,
+    rtmpServerUrl: envVars.RTMP_SERVER_URL,
   },
 };
 
