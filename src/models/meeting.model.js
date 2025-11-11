@@ -95,6 +95,31 @@ const meetingSchema = new mongoose.Schema(
       rtmpStreamId: { type: String }, // Agora RTMP stream ID
       rtmpUrl: { type: String }, // RTMP stream URL
     },
+    
+    // Transcription configuration
+    transcription: {
+      enabled: { type: Boolean, default: false },
+      autoTranscribe: { type: Boolean, default: true }, // Auto-transcribe after recording upload
+      status: { 
+        type: String, 
+        enum: ['idle', 'processing', 'completed', 'failed'], 
+        default: 'idle' 
+      },
+      startedAt: { type: Date },
+      completedAt: { type: Date },
+      jobId: { type: String }, // Transcription service job ID
+      fileUrl: { type: String }, // S3 URL for transcript file
+      fileKey: { type: String }, // S3 key for transcript file
+      fileSize: { type: Number }, // File size in bytes
+      language: { type: String, default: 'en' }, // Language code
+      error: { type: String }, // Error message if transcription failed
+      rawTranscript: { type: mongoose.Schema.Types.Mixed }, // Raw transcript data with timestamps
+      formattedTranscript: { type: String }, // Formatted transcript text
+      speakers: { type: [String], default: [] }, // List of speaker labels (e.g., ['spk_0', 'spk_1'])
+      participantMapping: { type: Map, of: String }, // Map speaker labels to participant names/emails
+      lastEditedAt: { type: Date }, // Last time transcript was edited
+      lastEditedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // User who last edited
+    },
   },
   { timestamps: true }
 );
@@ -109,6 +134,8 @@ meetingSchema.index({ scheduledAt: 1 });
 meetingSchema.index({ expiresAt: 1 });
 meetingSchema.index({ 'recording.recordingId': 1 });
 meetingSchema.index({ 'recording.status': 1 });
+meetingSchema.index({ 'transcription.jobId': 1 });
+meetingSchema.index({ 'transcription.status': 1 });
 
 // Virtual for meeting duration in seconds
 meetingSchema.virtual('durationInSeconds').get(function() {

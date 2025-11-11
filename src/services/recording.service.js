@@ -4,6 +4,7 @@ import ApiError from '../utils/ApiError.js';
 import config from '../config/config.js';
 import { uploadRecordingToS3, getPresignedDownloadUrl, generateRecordingS3Key } from './recording-upload.service.js';
 import logger from '../config/logger.js';
+import { startTranscription } from './transcription.service.js';
 
 /**
  * Generate unique recording ID
@@ -312,10 +313,27 @@ const uploadRecordingFile = async (meetingId, userId, file) => {
       fileSize: uploadResult.fileSize,
     });
     
+    // Auto-start transcription if enabled
+    if (config.transcription.autoStart && meeting.transcription.autoTranscribe !== false) {
+      try {
+        logger.info(`Auto-starting transcription for meeting ${meetingId}`);
+        // Start transcription in background (don't await)
+        startTranscription(meetingId, userId, {
+          language: config.transcription.language,
+        }).catch((error) => {
+          logger.error(`Auto-transcription failed for meeting ${meetingId}:`, error);
+        });
+      } catch (error) {
+        logger.error(`Failed to auto-start transcription for meeting ${meetingId}:`, error);
+        // Don't fail the upload if transcription fails
+      }
+    }
+    
     return {
       meetingId: meeting.meetingId,
       recording: meeting.recording,
       message: 'Recording uploaded successfully',
+      transcriptionStarted: config.transcription.autoStart && meeting.transcription.autoTranscribe !== false,
     };
   } catch (error) {
     logger.error(`Failed to upload recording for meeting ${meetingId}:`, error);

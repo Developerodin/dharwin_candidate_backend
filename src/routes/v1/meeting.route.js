@@ -6,6 +6,7 @@ import * as meetingValidation from '../../validations/meeting.validation.js';
 import * as meetingController from '../../controllers/meeting.controller.js';
 import * as recordingValidation from '../../validations/recording.validation.js';
 import * as recordingController from '../../controllers/recording.controller.js';
+import * as transcriptionController from '../../controllers/transcription.controller.js';
 
 const router = express.Router();
 
@@ -826,5 +827,167 @@ router.get('/:meetingId/recording/download', auth(), validate(recordingValidatio
  *         description: Meeting not found
  */
 router.post('/:meetingId/recording/upload', auth(), uploadVideo('file'), recordingController.upload);
+
+/**
+ * @swagger
+ * /meetings/{meetingId}/transcription/start:
+ *   post:
+ *     summary: Start transcription
+ *     description: Start transcription for a meeting recording
+ *     tags: [Meetings, Transcription]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: meetingId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Meeting ID
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               language:
+ *                 type: string
+ *                 default: en
+ *                 description: Language code for transcription
+ *     responses:
+ *       200:
+ *         description: Transcription started successfully
+ *       400:
+ *         description: Bad request - Recording not completed or transcription already in progress
+ *       403:
+ *         description: Forbidden - Only meeting creator can start transcription
+ *       404:
+ *         description: Meeting not found
+ */
+router.post('/:meetingId/transcription/start', auth(), transcriptionController.start);
+
+/**
+ * @swagger
+ * /meetings/{meetingId}/transcription/status:
+ *   get:
+ *     summary: Get transcription status
+ *     description: Get the current transcription status for a meeting
+ *     tags: [Meetings, Transcription]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: meetingId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Meeting ID
+ *     responses:
+ *       200:
+ *         description: Transcription status retrieved successfully
+ *       404:
+ *         description: Meeting not found
+ */
+router.get('/:meetingId/transcription/status', auth(), transcriptionController.getStatus);
+
+/**
+ * @swagger
+ * /meetings/{meetingId}/transcription:
+ *   get:
+ *     summary: Get transcript content
+ *     description: Get the formatted transcript content
+ *     tags: [Meetings, Transcription]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: meetingId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Meeting ID
+ *     responses:
+ *       200:
+ *         description: Transcript retrieved successfully
+ *       400:
+ *         description: Bad request - Transcription not completed yet
+ *       404:
+ *         description: Meeting not found
+ */
+router.get('/:meetingId/transcription', auth(), transcriptionController.getTranscriptContent);
+
+/**
+ * @swagger
+ * /meetings/{meetingId}/transcription:
+ *   patch:
+ *     summary: Update transcript
+ *     description: Edit/update the transcript content
+ *     tags: [Meetings, Transcription]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: meetingId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Meeting ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - transcript
+ *             properties:
+ *               transcript:
+ *                 type: string
+ *                 description: Updated transcript text
+ *     responses:
+ *       200:
+ *         description: Transcript updated successfully
+ *       400:
+ *         description: Bad request - Invalid transcript text
+ *       403:
+ *         description: Forbidden - Only meeting creator can edit transcript
+ *       404:
+ *         description: Meeting not found
+ */
+router.patch('/:meetingId/transcription', auth(), transcriptionController.update);
+
+/**
+ * @swagger
+ * /meetings/{meetingId}/transcription/download:
+ *   get:
+ *     summary: Get transcript download URL
+ *     description: Get presigned URL for downloading the transcript
+ *     tags: [Meetings, Transcription]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: meetingId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Meeting ID
+ *       - in: query
+ *         name: format
+ *         schema:
+ *           type: string
+ *           enum: [txt, docx, pdf]
+ *           default: txt
+ *         description: Export format (currently only txt supported)
+ *     responses:
+ *       200:
+ *         description: Download URL generated successfully
+ *       400:
+ *         description: Bad request - Transcription not completed or format not supported
+ *       404:
+ *         description: Meeting not found
+ */
+router.get('/:meetingId/transcription/download', auth(), transcriptionController.getDownloadUrl);
 
 export default router;

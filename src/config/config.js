@@ -39,6 +39,11 @@ const envVarsSchema = Joi.object()
     RECORDING_DEFAULT_FPS: Joi.number().default(30).description('Default recording FPS'),
     RECORDING_DEFAULT_BITRATE: Joi.number().default(2000).description('Default recording bitrate in kbps'),
     RTMP_SERVER_URL: Joi.string().default('rtmp://localhost:1935/live').description('RTMP server URL'),
+    TRANSCRIPTION_PROVIDER: Joi.string().valid('assemblyai', 'openai', 'google').default('assemblyai').description('Transcription service provider'),
+    ASSEMBLYAI_API_KEY: Joi.string().description('AssemblyAI API key'),
+    OPENAI_API_KEY: Joi.string().description('OpenAI API key'),
+    TRANSCRIPTION_LANGUAGE: Joi.string().default('en').description('Default transcription language'),
+    TRANSCRIPTION_AUTO_START: Joi.boolean().default(true).description('Auto-start transcription after recording upload'),
   })
   .unknown();
 
@@ -98,6 +103,13 @@ const config = {
     defaultFps: envVars.RECORDING_DEFAULT_FPS,
     defaultBitrate: envVars.RECORDING_DEFAULT_BITRATE,
     rtmpServerUrl: envVars.RTMP_SERVER_URL,
+  },
+  transcription: {
+    provider: envVars.TRANSCRIPTION_PROVIDER,
+    assemblyaiApiKey: envVars.ASSEMBLYAI_API_KEY,
+    openaiApiKey: envVars.OPENAI_API_KEY,
+    language: envVars.TRANSCRIPTION_LANGUAGE,
+    autoStart: envVars.TRANSCRIPTION_AUTO_START,
   },
 };
 
