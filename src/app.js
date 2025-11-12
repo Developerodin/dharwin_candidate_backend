@@ -27,7 +27,17 @@ if (config.env !== 'test') {
 }
 
 // set security HTTP headers
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", config.frontendUrl],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"], // 'unsafe-inline' needed for inline styles in HTML
+      connectSrc: ["'self'"],
+    },
+  },
+}));
 
 // parse json request body
 app.use(express.json());

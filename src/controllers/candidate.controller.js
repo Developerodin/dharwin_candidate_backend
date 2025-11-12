@@ -498,6 +498,7 @@ const generatePublicProfileHTML = (candidateData) => {
                 font-size: 16px;
                 opacity: 0.95;
                 font-weight: 300;
+                text-align: center;
             }
             
             .main-content {
