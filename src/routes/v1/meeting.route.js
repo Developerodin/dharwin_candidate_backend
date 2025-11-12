@@ -7,6 +7,7 @@ import * as meetingController from '../../controllers/meeting.controller.js';
 import * as recordingValidation from '../../validations/recording.validation.js';
 import * as recordingController from '../../controllers/recording.controller.js';
 import * as transcriptionController from '../../controllers/transcription.controller.js';
+import chatRoute from './chat.route.js';
 
 const router = express.Router();
 
@@ -989,5 +990,8 @@ router.patch('/:meetingId/transcription', auth(), transcriptionController.update
  *         description: Meeting not found
  */
 router.get('/:meetingId/transcription/download', auth(), transcriptionController.getDownloadUrl);
+
+// Chat routes (nested under meetings)
+router.use('/:meetingId/chat', chatRoute);
 
 export default router;

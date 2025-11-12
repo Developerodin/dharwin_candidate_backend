@@ -1,16 +1,30 @@
+import http from 'http';
 import mongoose from 'mongoose';
 import app from './app.js';
 import config from './config/config.js';
 import logger from './config/logger.js';
 import { startMeetingScheduler, stopMeetingScheduler } from './services/meeting.scheduler.js';
+import initializeSocket from './sockets/index.js';
 
 let server;
+let io;
 let meetingSchedulerInterval;
 mongoose.connect(config.mongoose.url, config.mongoose.options).then(() => {
   logger.info('Connected to MongoDB');
-  server = app.listen(config.port, () => {
+  
+  // Create HTTP server from Express app
+  server = http.createServer(app);
+  
+  // Initialize Socket.io
+  io = initializeSocket(server);
+  
+  // Make io accessible to app if needed
+  app.set('io', io);
+  
+  server.listen(config.port, () => {
     logger.info(`Listening to port ${config.port}`);
   });
+  
   // Start auto-end scheduler (run every 1 minute)
   meetingSchedulerInterval = startMeetingScheduler(1);
 });
