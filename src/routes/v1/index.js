@@ -6,6 +6,7 @@ import uploadRoute from './upload.route.js';
 import meetingRoute from './meeting.route.js';
 import loginLogRoute from './loginLog.route.js';
 import attendanceRoute from './attendance.route.js';
+import projectRoute from './project.route.js';
 import docsRoute from './docs.route.js';
 import config from '../../config/config.js';
 
@@ -39,6 +40,10 @@ const defaultRoutes = [
   {
     path: '/attendance',
     route: attendanceRoute,
+  },
+  {
+    path: '/projects',
+    route: projectRoute,
   },
 ];
 

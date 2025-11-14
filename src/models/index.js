@@ -5,6 +5,7 @@ import Meeting from './meeting.model.js';
 import LoginLog from './loginLog.model.js';
 import Attendance from './attendance.model.js';
 import ChatMessage from './chatMessage.model.js';
+import Project from './project.model.js';
 
-export { Token, User, Candidate, Meeting, LoginLog, Attendance, ChatMessage };
+export { Token, User, Candidate, Meeting, LoginLog, Attendance, ChatMessage, Project };
 
