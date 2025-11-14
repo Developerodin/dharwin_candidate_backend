@@ -6,6 +6,8 @@ import LoginLog from './loginLog.model.js';
 import Attendance from './attendance.model.js';
 import ChatMessage from './chatMessage.model.js';
 import Project from './project.model.js';
+import Task from './task.model.js';
+import TaskComment from './taskComment.model.js';
 
-export { Token, User, Candidate, Meeting, LoginLog, Attendance, ChatMessage, Project };
+export { Token, User, Candidate, Meeting, LoginLog, Attendance, ChatMessage, Project, Task, TaskComment };
 
