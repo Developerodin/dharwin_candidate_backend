@@ -8,6 +8,7 @@ import loginLogRoute from './loginLog.route.js';
 import attendanceRoute from './attendance.route.js';
 import projectRoute from './project.route.js';
 import taskRoute from './task.route.js';
+import dashboardRoute from './dashboard.route.js';
 import docsRoute from './docs.route.js';
 import config from '../../config/config.js';
 
@@ -49,6 +50,10 @@ const defaultRoutes = [
   {
     path: '/tasks',
     route: taskRoute,
+  },
+  {
+    path: '/dashboard',
+    route: dashboardRoute,
   },
 ];
 
