@@ -12,6 +12,7 @@ import {
   updateMeeting,
   deleteMeeting,
   getScreenShareToken as getScreenShareTokenService,
+  shareMeeting as shareMeetingService,
 } from '../services/meeting.service.js';
 
 /**
@@ -232,6 +233,24 @@ const getScreenShareToken = catchAsync(async (req, res) => {
   });
 });
 
+/**
+ * Share meeting via email
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+const share = catchAsync(async (req, res) => {
+  const { meetingId } = req.params;
+  const { emails, message } = req.body;
+  
+  const result = await shareMeetingService(meetingId, emails, req.user.id, message);
+  
+  res.status(httpStatus.OK).json({
+    success: true,
+    data: result,
+    message: `Meeting invitations sent to ${result.sent} out of ${result.totalEmails} recipients`,
+  });
+});
+
 export {
   create,
   get,
@@ -244,4 +263,5 @@ export {
   remove,
   getMeetingInfo,
   getScreenShareToken,
+  share,
 };

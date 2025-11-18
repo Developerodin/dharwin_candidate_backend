@@ -359,6 +359,18 @@ const updateTaskById = async (id, updateBody, currentUser) => {
     throw new ApiError(httpStatus.FORBIDDEN, 'Forbidden');
   }
 
+  // Verify new project exists if project is being updated
+  if (updateBody.project !== undefined) {
+    const currentProjectId = task.project.toString();
+    const newProjectId = updateBody.project.toString();
+    if (currentProjectId !== newProjectId) {
+      const newProject = await Project.findById(updateBody.project);
+      if (!newProject) {
+        throw new ApiError(httpStatus.NOT_FOUND, 'Project not found');
+      }
+    }
+  }
+
   // Handle attachment updates and deletions
   if (updateBody.attachments !== undefined) {
     const oldAttachments = task.attachments || [];

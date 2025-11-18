@@ -4,6 +4,8 @@ import ApiError from '../utils/ApiError.js';
 import pkg from 'agora-access-token';
 const { RtcTokenBuilder, RtcRole } = pkg;
 import config from '../config/config.js';
+import { sendMeetingInvitationEmail } from './email.service.js';
+import logger from '../config/logger.js';
 
 /**
  * Generate Agora RTC token with account
@@ -378,6 +380,63 @@ const getScreenShareToken = async (meetingId, joinToken, screenShareUid, email) 
   };
 };
 
+/**
+ * Share meeting via email
+ * @param {string} meetingId - Meeting ID
+ * @param {Array<string>} emails - Array of email addresses
+ * @param {string} userId - User ID (for authorization)
+ * @param {string} customMessage - Optional custom message
+ * @returns {Promise<Object>}
+ */
+const shareMeeting = async (meetingId, emails, userId, customMessage = null) => {
+  const meeting = await getMeetingById(meetingId);
+  
+  if (!meeting) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Meeting not found');
+  }
+  
+  // Check if user is the meeting creator
+  if (String(meeting.createdBy) !== String(userId)) {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Only meeting creator can share the meeting');
+  }
+  
+  // Prepare meeting data for email
+  const meetingData = {
+    meetingId: meeting.meetingId,
+    title: meeting.title,
+    description: meeting.description,
+    meetingUrl: meeting.meetingUrl,
+    joinToken: meeting.joinToken,
+    scheduledAt: meeting.scheduledAt,
+    duration: meeting.duration,
+    createdBy: meeting.createdBy,
+  };
+  
+  // Send emails to all recipients
+  const emailPromises = emails.map(async (email) => {
+    try {
+      await sendMeetingInvitationEmail(email, meetingData, customMessage);
+      return { email, success: true };
+    } catch (error) {
+      logger.error(`Failed to send meeting invitation to ${email}:`, error);
+      return { email, success: false, error: error.message };
+    }
+  });
+  
+  const results = await Promise.allSettled(emailPromises);
+  
+  const sent = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
+  const failed = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success)).length;
+  
+  return {
+    meetingId: meeting.meetingId,
+    totalEmails: emails.length,
+    sent,
+    failed,
+    results: results.map(r => r.status === 'fulfilled' ? r.value : { email: 'unknown', success: false, error: r.reason?.message || 'Unknown error' }),
+  };
+};
+
 export {
   generateRtcTokenWithAccount,
   createMeeting,
@@ -391,4 +450,5 @@ export {
   updateMeeting,
   deleteMeeting,
   getScreenShareToken,
+  shareMeeting,
 };

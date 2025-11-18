@@ -96,6 +96,7 @@ const updateTask = {
     .keys({
       title: Joi.string().optional().trim().min(3).max(200),
       description: Joi.string().optional().trim().allow('', null).max(5000),
+      project: Joi.string().custom(objectId).optional(),
       status: Joi.string()
         .valid('New', 'Todo', 'On Going', 'In Review', 'Completed')
         .optional(),

@@ -115,6 +115,18 @@ const getScreenShareToken = {
   }),
 };
 
+const shareMeeting = {
+  params: Joi.object().keys({
+    meetingId: Joi.string().required().description('Meeting ID'),
+  }),
+  body: Joi.object().keys({
+    emails: Joi.array().items(
+      Joi.string().email().required()
+    ).min(1).max(50).required().description('Array of email addresses to invite'),
+    message: Joi.string().max(500).optional().description('Optional custom message to include in invitation'),
+  }),
+};
+
 export {
   createMeeting,
   getMeeting,
@@ -127,4 +139,5 @@ export {
   deleteMeeting,
   getMeetingInfo,
   getScreenShareToken,
+  shareMeeting,
 };

@@ -592,6 +592,92 @@ router.post('/:meetingId/screen-share-token', validate(meetingValidation.getScre
 
 /**
  * @swagger
+ * /meetings/{meetingId}/share:
+ *   post:
+ *     summary: Share meeting via email
+ *     description: Send meeting invitation emails to multiple recipients (meeting creator only)
+ *     tags: [Meetings]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: meetingId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Meeting ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - emails
+ *             properties:
+ *               emails:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: email
+ *                 minItems: 1
+ *                 maxItems: 50
+ *                 description: Array of email addresses to invite
+ *                 example: ["john.doe@example.com", "jane.smith@example.com"]
+ *               message:
+ *                 type: string
+ *                 maxLength: 500
+ *                 description: Optional custom message to include in invitation
+ *                 example: "Looking forward to our discussion!"
+ *     responses:
+ *       200:
+ *         description: Meeting invitations sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     meetingId:
+ *                       type: string
+ *                     totalEmails:
+ *                       type: integer
+ *                     sent:
+ *                       type: integer
+ *                     failed:
+ *                       type: integer
+ *                     results:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           email:
+ *                             type: string
+ *                           success:
+ *                             type: boolean
+ *                           error:
+ *                             type: string
+ *                 message:
+ *                   type: string
+ *                   example: "Meeting invitations sent to 2 out of 2 recipients"
+ *       400:
+ *         description: Bad request - Invalid email addresses
+ *       403:
+ *         description: Forbidden - Only meeting creator can share meeting
+ *       404:
+ *         description: Meeting not found
+ *       401:
+ *         description: Unauthorized
+ */
+router.post('/:meetingId/share', auth(), validate(meetingValidation.shareMeeting), meetingController.share);
+
+/**
+ * @swagger
  * /meetings/{meetingId}/recording/status:
  *   get:
  *     summary: Get recording status

@@ -1457,6 +1457,542 @@ Dharwin Team`;
   await sendEmail(to, subject, text, html);
 };
 
+/**
+ * Send meeting invitation email
+ * @param {string} to
+ * @param {Object} meetingData
+ * @param {string} customMessage
+ * @returns {Promise}
+ */
+const sendMeetingInvitationEmail = async (to, meetingData, customMessage = null) => {
+  const { meetingId, title, description, meetingUrl, joinToken, scheduledAt, duration, createdBy } = meetingData;
+  const subject = `Meeting Invitation: ${title}`;
+  
+  const frontendUrl = config.frontendUrl || 'https://main.d17v4yz0vw03r0.amplifyapp.com';
+  const meetingInvitationUrl = `${frontendUrl}/meeting/${meetingId}?token=${joinToken}`;
+  
+  // Format scheduled date if available
+  let scheduledDateText = '';
+  if (scheduledAt) {
+    const date = new Date(scheduledAt);
+    scheduledDateText = date.toLocaleString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZoneName: 'short'
+    });
+  }
+  
+  const durationText = duration ? `${duration} minutes` : 'Not specified';
+  
+  const text = `Dear Participant,
+
+You have been invited to join a meeting:
+
+Title: ${title}
+${description ? `Description: ${description}` : ''}
+${scheduledDateText ? `Scheduled: ${scheduledDateText}` : ''}
+Duration: ${durationText}
+
+Join the meeting: ${meetingInvitationUrl}
+
+${customMessage ? `\nMessage from organizer:\n${customMessage}\n` : ''}
+
+Best regards,
+Dharwin Team`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Meeting Invitation - Dharwin</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+                line-height: 1.6;
+                color: #1a202c;
+                background-color: #f8fafc;
+                margin: 0;
+                padding: 20px;
+            }
+            
+            .email-container {
+                max-width: 600px;
+                margin: 0 auto;
+                background-color: #ffffff;
+                border-radius: 12px;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+                overflow: hidden;
+            }
+            
+            .header {
+                background: linear-gradient(135deg, #093464 0%, #0d4a7a 100%);
+                padding: 40px 30px;
+                text-align: center;
+                position: relative;
+            }
+            
+            .header::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+                opacity: 0.3;
+            }
+            
+            .logo {
+                position: relative;
+                z-index: 1;
+                margin-bottom: 8px;
+            }
+            
+            .logo-image {
+                max-height: 50px;
+                max-width: 180px;
+                width: auto;
+                height: auto;
+            }
+            
+            .tagline {
+                color: rgba(255, 255, 255, 0.9);
+                font-size: 16px;
+                font-weight: 400;
+                position: relative;
+                z-index: 1;
+            }
+            
+            .content {
+                padding: 50px 40px;
+            }
+            
+            .invitation-section {
+                text-align: center;
+                margin-bottom: 40px;
+            }
+            
+            .invitation-icon {
+                width: 80px;
+                height: 80px;
+                background: linear-gradient(135deg, #36af4c 0%, #2d8f3f 100%);
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 20px;
+                font-size: 36px;
+                color: white;
+                box-shadow: 0 8px 25px rgba(54, 175, 76, 0.3);
+            }
+            
+            h1 {
+                color: #1a202c;
+                font-size: 28px;
+                font-weight: 700;
+                margin-bottom: 16px;
+                letter-spacing: -0.5px;
+            }
+            
+            .subtitle {
+                color: #4a5568;
+                font-size: 18px;
+                margin-bottom: 30px;
+            }
+            
+            .meeting-details {
+                background-color: #f8fafc;
+                border-radius: 12px;
+                padding: 30px;
+                margin: 40px 0;
+                border: 1px solid #e2e8f0;
+            }
+            
+            .meeting-title {
+                color: #093464;
+                font-size: 24px;
+                font-weight: 700;
+                margin-bottom: 16px;
+                text-align: center;
+            }
+            
+            .meeting-description {
+                color: #4a5568;
+                font-size: 16px;
+                margin-bottom: 24px;
+                text-align: center;
+            }
+            
+            .detail-item {
+                display: flex;
+                align-items: center;
+                margin: 16px 0;
+                padding: 16px;
+                background-color: white;
+                border-radius: 8px;
+                border-left: 4px solid #36af4c;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            }
+            
+            .detail-icon {
+                width: 32px;
+                height: 32px;
+                background: linear-gradient(135deg, #093464 0%, #0d4a7a 100%);
+                color: white;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: 600;
+                font-size: 14px;
+                margin-right: 16px;
+                flex-shrink: 0;
+            }
+            
+            .detail-content {
+                flex: 1;
+            }
+            
+            .detail-label {
+                font-weight: 600;
+                color: #1a202c;
+                margin-bottom: 4px;
+            }
+            
+            .detail-value {
+                color: #4a5568;
+                font-size: 14px;
+            }
+            
+            .custom-message {
+                background: linear-gradient(135deg, rgba(54, 175, 76, 0.1) 0%, rgba(9, 52, 100, 0.1) 100%);
+                border: 1px solid rgba(54, 175, 76, 0.2);
+                border-radius: 8px;
+                padding: 20px;
+                margin: 30px 0;
+                text-align: center;
+            }
+            
+            .custom-message-title {
+                color: #093464;
+                font-weight: 600;
+                margin-bottom: 8px;
+                font-size: 16px;
+            }
+            
+            .custom-message-text {
+                color: #4a5568;
+                font-size: 14px;
+                font-style: italic;
+            }
+            
+            .cta-section {
+                text-align: center;
+                margin: 40px 0;
+            }
+            
+            .button {
+                display: inline-block;
+                padding: 18px 40px;
+                background: linear-gradient(135deg, #36af4c 0%, #2d8f3f 100%);
+                color: #ffffff;
+                text-decoration: none;
+                border-radius: 8px;
+                font-weight: 600;
+                font-size: 16px;
+                transition: all 0.3s ease;
+                box-shadow: 0 4px 14px rgba(54, 175, 76, 0.3);
+                border: none;
+                cursor: pointer;
+            }
+            
+            .button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 8px 25px rgba(54, 175, 76, 0.4);
+                background: linear-gradient(135deg, #2d8f3f 0%, #27a745 100%);
+            }
+            
+            .info-section {
+                background-color: #f8fafc;
+                border-radius: 12px;
+                padding: 30px;
+                margin: 40px 0;
+                border: 1px solid #e2e8f0;
+            }
+            
+            .info-title {
+                color: #093464;
+                font-size: 20px;
+                font-weight: 600;
+                margin-bottom: 20px;
+                text-align: center;
+            }
+            
+            .info-item {
+                display: flex;
+                align-items: center;
+                margin: 16px 0;
+                padding: 16px;
+                background-color: white;
+                border-radius: 8px;
+                border-left: 4px solid #36af4c;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            }
+            
+            .info-icon {
+                width: 32px;
+                height: 32px;
+                background: linear-gradient(135deg, #093464 0%, #0d4a7a 100%);
+                color: white;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: 600;
+                font-size: 14px;
+                margin-right: 16px;
+                flex-shrink: 0;
+            }
+            
+            .info-content {
+                flex: 1;
+            }
+            
+            .info-title-text {
+                font-weight: 600;
+                color: #1a202c;
+                margin-bottom: 4px;
+            }
+            
+            .info-description {
+                color: #4a5568;
+                font-size: 14px;
+            }
+            
+            .link-fallback {
+                background-color: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 16px;
+                margin: 20px 0;
+                font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+                font-size: 12px;
+                color: #4a5568;
+                word-break: break-all;
+                text-align: center;
+            }
+            
+            .footer {
+                background-color: #f8fafc;
+                padding: 30px 40px;
+                border-top: 1px solid #e2e8f0;
+                text-align: center;
+            }
+            
+            .footer p {
+                color: #64748b;
+                font-size: 14px;
+                margin-bottom: 8px;
+            }
+            
+            .footer a {
+                color: #093464;
+                text-decoration: none;
+                font-weight: 500;
+            }
+            
+            .footer a:hover {
+                color: #36af4c;
+                text-decoration: underline;
+            }
+            
+            .divider {
+                height: 1px;
+                background: linear-gradient(90deg, transparent 0%, #e2e8f0 50%, transparent 100%);
+                margin: 30px 0;
+            }
+            
+            @media (max-width: 640px) {
+                .email-container {
+                    margin: 10px;
+                    border-radius: 8px;
+                }
+                
+                .header {
+                    padding: 30px 20px;
+                }
+                
+                .content {
+                    padding: 30px 20px;
+                }
+                
+                .footer {
+                    padding: 20px;
+                }
+                
+                .logo-image {
+                    max-height: 40px;
+                    max-width: 140px;
+                }
+                
+                h1 {
+                    font-size: 24px;
+                }
+                
+                .subtitle {
+                    font-size: 16px;
+                }
+                
+                .button {
+                    padding: 16px 32px;
+                    font-size: 15px;
+                }
+                
+                .meeting-details {
+                    padding: 20px;
+                }
+                
+                .detail-item {
+                    flex-direction: column;
+                    text-align: center;
+                }
+                
+                .detail-icon {
+                    margin-right: 0;
+                    margin-bottom: 12px;
+                }
+                
+                .info-section {
+                    padding: 20px;
+                }
+                
+                .info-item {
+                    flex-direction: column;
+                    text-align: center;
+                }
+                
+                .info-icon {
+                    margin-right: 0;
+                    margin-bottom: 12px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="email-container">
+            <div class="header">
+                <div class="logo">
+                    <img src="https://main.d17v4yz0vw03r0.amplifyapp.com/assets/images/company-logos/logo.jpeg" alt="Dharwin" class="logo-image">
+                </div>
+                <div class="tagline">Meeting Invitation</div>
+            </div>
+            
+            <div class="content">
+                <div class="invitation-section">
+                    <div class="invitation-icon">📅</div>
+                    <h1>You're Invited!</h1>
+                    <p class="subtitle">You have been invited to join a meeting</p>
+                </div>
+                
+                <div class="meeting-details">
+                    <div class="meeting-title">${title}</div>
+                    ${description ? `<div class="meeting-description">${description}</div>` : ''}
+                    
+                    ${scheduledDateText ? `
+                    <div class="detail-item">
+                        <div class="detail-icon">📆</div>
+                        <div class="detail-content">
+                            <div class="detail-label">Scheduled Time</div>
+                            <div class="detail-value">${scheduledDateText}</div>
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    <div class="detail-item">
+                        <div class="detail-icon">⏱️</div>
+                        <div class="detail-content">
+                            <div class="detail-label">Duration</div>
+                            <div class="detail-value">${durationText}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                ${customMessage ? `
+                <div class="custom-message">
+                    <div class="custom-message-title">Message from Organizer</div>
+                    <div class="custom-message-text">${customMessage}</div>
+                </div>
+                ` : ''}
+                
+                <div class="cta-section">
+                    <a href="${meetingInvitationUrl}" class="button">Join Meeting</a>
+                </div>
+                
+                <div class="info-section">
+                    <h3 class="info-title">📋 How to Join</h3>
+                    
+                    <div class="info-item">
+                        <div class="info-icon">1</div>
+                        <div class="info-content">
+                            <div class="info-title-text">Click the Join Button</div>
+                            <div class="info-description">Click the "Join Meeting" button above to access the meeting page</div>
+                        </div>
+                    </div>
+                    
+                    <div class="info-item">
+                        <div class="info-icon">2</div>
+                        <div class="info-content">
+                            <div class="info-title-text">Enter Your Details</div>
+                            <div class="info-description">Provide your name and email address to join the meeting</div>
+                        </div>
+                    </div>
+                    
+                    <div class="info-item">
+                        <div class="info-icon">3</div>
+                        <div class="info-content">
+                            <div class="info-title-text">Start Video Call</div>
+                            <div class="info-description">Once joined, you'll be connected to the video meeting</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <p style="color: #4a5568; font-size: 16px; margin: 30px 0; text-align: center;">
+                    We look forward to seeing you at the meeting!
+                </p>
+                
+                <div class="link-fallback">
+                    If the button doesn't work, copy and paste this link into your browser:<br>
+                    ${meetingInvitationUrl}
+                </div>
+            </div>
+            
+            <div class="divider"></div>
+            
+            <div class="footer">
+                <p>This invitation was sent to you by the meeting organizer.</p>
+                <p>If you believe you received this email in error, please ignore it.</p>
+                <p>© 2024 Dharwin. All rights reserved.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+  `;
+  
+  await sendEmail(to, subject, text, html);
+};
+
 export {
   transport,
   sendEmail,
@@ -1464,5 +2000,6 @@ export {
   sendVerificationEmail,
   sendCandidateInvitationEmail,
   sendCandidateProfileShareEmail,
+  sendMeetingInvitationEmail,
 };
 
