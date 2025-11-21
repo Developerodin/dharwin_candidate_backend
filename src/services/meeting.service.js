@@ -43,13 +43,57 @@ const generateRtcTokenWithAccount = (channelName, account, role = RtcRole.PUBLIS
 };
 
 /**
+ * Send meeting invitation emails (helper function)
+ * @param {Meeting} meeting - Meeting object
+ * @param {Array<string>} emails - Array of email addresses
+ * @param {string} customMessage - Optional custom message
+ * @returns {Promise<Object>}
+ */
+const sendMeetingInvitations = async (meeting, emails, customMessage = null) => {
+  // Prepare meeting data for email
+  const meetingData = {
+    meetingId: meeting.meetingId,
+    title: meeting.title,
+    description: meeting.description,
+    meetingUrl: meeting.meetingUrl,
+    joinToken: meeting.joinToken,
+    scheduledAt: meeting.scheduledAt,
+    duration: meeting.duration,
+    createdBy: meeting.createdBy,
+  };
+
+  // Send emails to all recipients
+  const emailPromises = emails.map(async (email) => {
+    try {
+      await sendMeetingInvitationEmail(email, meetingData, customMessage);
+      return { email, success: true };
+    } catch (error) {
+      logger.error(`Failed to send meeting invitation to ${email}:`, error);
+      return { email, success: false, error: error.message };
+    }
+  });
+
+  const results = await Promise.allSettled(emailPromises);
+
+  const sent = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
+  const failed = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success)).length;
+
+  return {
+    totalEmails: emails.length,
+    sent,
+    failed,
+    results: results.map(r => r.status === 'fulfilled' ? r.value : { email: 'unknown', success: false, error: r.reason?.message || 'Unknown error' }),
+  };
+};
+
+/**
  * Create a new meeting
  * @param {Object} meetingData - Meeting data
  * @param {string} userId - User ID who created the meeting
  * @returns {Promise<Meeting>}
  */
 const createMeeting = async (meetingData, userId) => {
-  const { host, hosts, ...rest } = meetingData || {};
+  const { host, hosts, emailInvites, ...rest } = meetingData || {};
   const normalizedHosts = [];
   if (host && host.email) {
     normalizedHosts.push({ name: host.name, email: String(host.email).toLowerCase() });
@@ -76,6 +120,14 @@ const createMeeting = async (meetingData, userId) => {
         }
       : {}),
   });
+
+  // Automatically send invitation emails if emailInvites is provided
+  if (Array.isArray(emailInvites) && emailInvites.length > 0) {
+    // Send emails asynchronously (don't wait for them to complete)
+    sendMeetingInvitations(meeting, emailInvites).catch((error) => {
+      logger.error('Failed to send meeting invitation emails during creation:', error);
+    });
+  }
   
   return meeting;
 };
@@ -400,40 +452,11 @@ const shareMeeting = async (meetingId, emails, userId, customMessage = null) => 
     throw new ApiError(httpStatus.FORBIDDEN, 'Only meeting creator can share the meeting');
   }
   
-  // Prepare meeting data for email
-  const meetingData = {
-    meetingId: meeting.meetingId,
-    title: meeting.title,
-    description: meeting.description,
-    meetingUrl: meeting.meetingUrl,
-    joinToken: meeting.joinToken,
-    scheduledAt: meeting.scheduledAt,
-    duration: meeting.duration,
-    createdBy: meeting.createdBy,
-  };
-  
-  // Send emails to all recipients
-  const emailPromises = emails.map(async (email) => {
-    try {
-      await sendMeetingInvitationEmail(email, meetingData, customMessage);
-      return { email, success: true };
-    } catch (error) {
-      logger.error(`Failed to send meeting invitation to ${email}:`, error);
-      return { email, success: false, error: error.message };
-    }
-  });
-  
-  const results = await Promise.allSettled(emailPromises);
-  
-  const sent = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
-  const failed = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success)).length;
+  const emailResult = await sendMeetingInvitations(meeting, emails, customMessage);
   
   return {
     meetingId: meeting.meetingId,
-    totalEmails: emails.length,
-    sent,
-    failed,
-    results: results.map(r => r.status === 'fulfilled' ? r.value : { email: 'unknown', success: false, error: r.reason?.message || 'Unknown error' }),
+    ...emailResult,
   };
 };
 

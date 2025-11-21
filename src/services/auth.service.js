@@ -20,7 +20,9 @@ const loginUserWithEmailAndPassword = async (email, password) => {
   }
   
   // Check if email is verified
-  if (!user.isEmailVerified) {
+  // Allow supervisors and recruiters to login without email verification (they are created by admin)
+  const allowedRolesWithoutVerification = ['supervisor', 'recruiter', 'admin'];
+  if (!user.isEmailVerified && !allowedRolesWithoutVerification.includes(user.role)) {
     throw new ApiError(httpStatus.FORBIDDEN, 'Please verify your email before logging in. Check your inbox for the verification link.');
   }
   

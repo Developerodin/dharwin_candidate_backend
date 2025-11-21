@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import toJSON from './plugins/toJSON.plugin.js';
 import paginate from './plugins/paginate.plugin.js';
+import { roles } from '../config/roles.js';
 
 const loginLogSchema = mongoose.Schema(
   {
@@ -20,7 +21,7 @@ const loginLogSchema = mongoose.Schema(
     role: {
       type: String,
       required: true,
-      enum: ['user', 'admin'],
+      enum: roles,
     },
     loginTime: {
       type: Date,

@@ -4,7 +4,7 @@ import { objectId } from './custom.validation.js';
 const getLoginLogs = {
   query: Joi.object().keys({
     email: Joi.string().email(),
-    role: Joi.string().valid('user', 'admin'),
+    role: Joi.string().valid('user', 'admin', 'supervisor', 'recruiter'),
     userId: Joi.string().custom(objectId),
     isActive: Joi.boolean(),
     startDate: Joi.date().iso(),
@@ -44,7 +44,7 @@ const getLoginStatistics = {
   query: Joi.object().keys({
     startDate: Joi.date().iso(),
     endDate: Joi.date().iso().min(Joi.ref('startDate')),
-    role: Joi.string().valid('user', 'admin'),
+    role: Joi.string().valid('user', 'admin', 'supervisor', 'recruiter'),
   }),
 };
 

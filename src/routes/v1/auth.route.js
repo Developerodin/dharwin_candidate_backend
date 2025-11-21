@@ -16,6 +16,8 @@ router.post('/reset-password', validate(authValidation.resetPassword), authContr
 router.post('/send-verification-email', auth(), authController.sendVerificationEmail);
 router.post('/verify-email', validate(authValidation.verifyEmail), authController.verifyEmail);
 router.post('/send-candidate-invitation', validate(authValidation.sendCandidateInvitation), authController.sendCandidateInvitation);
+router.post('/register-supervisor', auth('manageUsers'), validate(authValidation.registerSupervisor), authController.registerSupervisor);
+router.post('/register-recruiter', auth('manageUsers'), validate(authValidation.registerRecruiter), authController.registerRecruiter);
 
 export default router;
 

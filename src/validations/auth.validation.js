@@ -7,7 +7,7 @@ const register = {
     email: Joi.string().required().email(),
     password: Joi.string().required().custom(password),
     name: Joi.string().required(),
-    role: Joi.string().required().valid('user', 'admin'),
+    role: Joi.string().required().valid('user', 'admin', 'supervisor', 'recruiter'),
     phoneNumber: Joi.string().optional().pattern(/^[\+]?[1-9][\d]{0,15}$/).messages({
       'string.pattern.base': 'Phone number must be a valid mobile phone number'
     }),
@@ -86,5 +86,29 @@ const sendCandidateInvitation = {
   }),
 };
 
-export { register, login, logout, refreshTokens, forgotPassword, resetPassword, verifyEmail, sendCandidateInvitation };
+const registerSupervisor = {
+  body: Joi.object().keys({
+    email: Joi.string().required().email(),
+    password: Joi.string().required().custom(password),
+    name: Joi.string().required(),
+    phoneNumber: Joi.string().optional().pattern(/^[\+]?[1-9][\d]{0,15}$/).messages({
+      'string.pattern.base': 'Phone number must be a valid mobile phone number'
+    }),
+    countryCode: Joi.string().optional().trim(),
+  }),
+};
+
+const registerRecruiter = {
+  body: Joi.object().keys({
+    email: Joi.string().required().email(),
+    password: Joi.string().required().custom(password),
+    name: Joi.string().required(),
+    phoneNumber: Joi.string().optional().pattern(/^[\+]?[1-9][\d]{0,15}$/).messages({
+      'string.pattern.base': 'Phone number must be a valid mobile phone number'
+    }),
+    countryCode: Joi.string().optional().trim(),
+  }),
+};
+
+export { register, login, logout, refreshTokens, forgotPassword, resetPassword, verifyEmail, sendCandidateInvitation, registerSupervisor, registerRecruiter };
 

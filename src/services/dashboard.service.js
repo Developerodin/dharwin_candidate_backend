@@ -10,18 +10,22 @@ import Meeting from '../models/meeting.model.js';
  * @returns {Promise<Object>}
  */
 const getAdminDashboard = async () => {
-  // Get all active projects (not cancelled or completed)
-  const activeProjects = await Project.find({
-    status: { $nin: ['Cancelled', 'Completed'] },
+  // Get all projects (excluding cancelled, but including completed)
+  const allProjects = await Project.find({
+    status: { $ne: 'Cancelled' },
   })
     .populate('createdBy', 'name email')
     .populate('assignedTo', 'name email')
     .lean();
 
-  // Get all tasks for active projects
-  const activeProjectIds = activeProjects.map((p) => p._id);
+  // Separate active and completed projects
+  const activeProjects = allProjects.filter((p) => p.status !== 'Completed');
+  const completedProjects = allProjects.filter((p) => p.status === 'Completed');
+
+  // Get all tasks for all projects (active and completed)
+  const allProjectIds = allProjects.map((p) => p._id);
   const allTasks = await Task.find({
-    project: { $in: activeProjectIds },
+    project: { $in: allProjectIds },
   })
     .populate('project', 'projectName status priority')
     .populate('assignedTo', 'name email')
@@ -29,11 +33,14 @@ const getAdminDashboard = async () => {
 
   // Calculate project statistics
   const projectStats = {
-    total: activeProjects.length,
+    total: allProjects.length,
+    active: activeProjects.length,
+    completed: completedProjects.length,
     byStatus: {
       'Not Started': 0,
       Inprogress: 0,
       'On Hold': 0,
+      Completed: 0,
     },
     byPriority: {
       Low: 0,
@@ -43,7 +50,7 @@ const getAdminDashboard = async () => {
     },
   };
 
-  activeProjects.forEach((project) => {
+  allProjects.forEach((project) => {
     if (projectStats.byStatus[project.status]) {
       projectStats.byStatus[project.status]++;
     }
@@ -106,8 +113,8 @@ const getAdminDashboard = async () => {
   taskStats.averageProgress =
     allTasks.length > 0 ? Math.round(totalProgress / allTasks.length) : 0;
 
-  // Calculate project progress
-  const projectsWithProgress = activeProjects.map((project) => {
+  // Calculate project progress for all projects (active and completed)
+  const projectsWithProgress = allProjects.map((project) => {
     const projectTasks = allTasks.filter(
       (task) => task.project && task.project._id.toString() === project._id.toString()
     );
@@ -149,6 +156,8 @@ const getAdminDashboard = async () => {
       projectManager: project.projectManager,
       assignedTo: project.assignedTo || [],
       createdBy: project.createdBy,
+      createdAt: project.createdAt,
+      updatedAt: project.updatedAt,
     };
   });
 
@@ -173,6 +182,8 @@ const getAdminDashboard = async () => {
 
     projectsAtRisk: projectsWithProgress
       .filter((project) => {
+        // Exclude completed projects from at-risk analysis
+        if (project.status === 'Completed') return false;
         // Projects with low progress and approaching deadline
         const isLowProgress = project.progress < 50;
         const isApproachingDeadline = project.daysRemaining !== null && project.daysRemaining < 30;
@@ -505,9 +516,53 @@ const getAdminDashboard = async () => {
     userStatistics.total += stat.count;
   });
 
+  // Separate active and completed projects for response
+  const activeProjectsList = projectsWithProgress.filter((p) => p.status !== 'Completed');
+  const completedProjectsList = projectsWithProgress.filter((p) => p.status === 'Completed');
+
+  // Get all recruiters
+  const recruiters = await User.find({ role: 'recruiter' })
+    .select('name email phoneNumber countryCode isEmailVerified role createdAt updatedAt')
+    .sort({ createdAt: -1 })
+    .lean()
+    .then((users) =>
+      users.map((user) => ({
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        phoneNumber: user.phoneNumber || null,
+        countryCode: user.countryCode || null,
+        isEmailVerified: user.isEmailVerified || false,
+        role: user.role,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      }))
+    );
+
+  // Get all supervisors
+  const supervisors = await User.find({ role: 'supervisor' })
+    .select('name email phoneNumber countryCode isEmailVerified role createdAt updatedAt')
+    .sort({ createdAt: -1 })
+    .lean()
+    .then((users) =>
+      users.map((user) => ({
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        phoneNumber: user.phoneNumber || null,
+        countryCode: user.countryCode || null,
+        isEmailVerified: user.isEmailVerified || false,
+        role: user.role,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      }))
+    );
+
   return {
     summary: {
-      activeProjects: projectStats.total,
+      activeProjects: projectStats.active,
+      completedProjects: projectStats.completed,
+      totalProjects: projectStats.total,
       totalTasks: taskStats.total,
       completedTasks: taskStats.byStatus.Completed,
       overdueTasks: taskStats.overdue,
@@ -548,12 +603,29 @@ const getAdminDashboard = async () => {
     },
     meetingStatistics,
     userStatistics,
-    projects: projectsWithProgress.sort((a, b) => {
+    projects: activeProjectsList.sort((a, b) => {
       // Sort by priority (Critical > High > Medium > Low) then by progress
       const priorityOrder = { Critical: 4, High: 3, Medium: 2, Low: 1 };
       const priorityDiff = (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
       if (priorityDiff !== 0) return priorityDiff;
       return b.progress - a.progress;
+    }),
+    completedProjects: completedProjectsList.sort((a, b) => {
+      // Sort completed projects by end date (most recent first), then by updatedAt
+      if (a.endDate && b.endDate) {
+        const endDateDiff = new Date(b.endDate) - new Date(a.endDate);
+        if (endDateDiff !== 0) return endDateDiff;
+      }
+      if (a.endDate && !b.endDate) return -1;
+      if (!a.endDate && b.endDate) return 1;
+      // If both have updatedAt, sort by that, otherwise by createdAt
+      if (a.updatedAt && b.updatedAt) {
+        return new Date(b.updatedAt) - new Date(a.updatedAt);
+      }
+      if (a.createdAt && b.createdAt) {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      }
+      return 0;
     }),
     bottlenecks,
     teamWorkload,
@@ -576,6 +648,14 @@ const getAdminDashboard = async () => {
     })),
     upcomingMeetings,
     activeMeetings,
+    recruiters,
+    supervisors,
+    recruitersAndSupervisorsCounts: {
+      totalRecruiters: recruiters.length,
+      totalSupervisors: supervisors.length,
+      verifiedRecruiters: recruiters.filter((r) => r.isEmailVerified).length,
+      verifiedSupervisors: supervisors.filter((s) => s.isEmailVerified).length,
+    },
   };
 };
 

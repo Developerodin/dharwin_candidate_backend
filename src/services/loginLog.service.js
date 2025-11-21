@@ -122,6 +122,12 @@ const getLoginStatistics = async (filter = {}) => {
         totalUsers: {
           $sum: { $cond: [{ $eq: ['$role', 'user'] }, 1, 0] }
         },
+        totalSupervisors: {
+          $sum: { $cond: [{ $eq: ['$role', 'supervisor'] }, 1, 0] }
+        },
+        totalRecruiters: {
+          $sum: { $cond: [{ $eq: ['$role', 'recruiter'] }, 1, 0] }
+        },
       },
     },
   ]);
@@ -131,6 +137,8 @@ const getLoginStatistics = async (filter = {}) => {
     activeSessions: 0,
     totalAdmins: 0,
     totalUsers: 0,
+    totalSupervisors: 0,
+    totalRecruiters: 0,
   };
 };
 

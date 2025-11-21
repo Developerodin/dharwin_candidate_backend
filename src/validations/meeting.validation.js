@@ -20,6 +20,9 @@ const createMeeting = {
         email: Joi.string().email().required().description('Host email'),
       })
     ).optional().description('List of hosts'),
+    emailInvites: Joi.array().items(
+      Joi.string().email().required()
+    ).min(1).max(50).optional().description('Array of email addresses to automatically send meeting invitations'),
   }),
 };
 

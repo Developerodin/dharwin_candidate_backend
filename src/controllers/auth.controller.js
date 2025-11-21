@@ -153,6 +153,28 @@ const sendCandidateInvitation = catchAsync(async (req, res) => {
   }
 });
 
+const registerSupervisor = catchAsync(async (req, res) => {
+  const userData = {
+    ...req.body,
+    role: 'supervisor',
+    isEmailVerified: true,
+  };
+  const user = await createUser(userData);
+  
+  res.status(httpStatus.CREATED).send({ user });
+});
+
+const registerRecruiter = catchAsync(async (req, res) => {
+  const userData = {
+    ...req.body,
+    role: 'recruiter',
+    isEmailVerified: true,
+  };
+  const user = await createUser(userData);
+  
+  res.status(httpStatus.CREATED).send({ user });
+});
+
 export {
   register,
   login,
@@ -163,4 +185,6 @@ export {
   sendVerificationEmail,
   verifyEmail,
   sendCandidateInvitation,
+  registerSupervisor,
+  registerRecruiter,
 };
