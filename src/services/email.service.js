@@ -3,7 +3,22 @@ import config from '../config/config.js';
 import logger from '../config/logger.js';
 
 
-const transport = nodemailer.createTransport(config.email.smtp);
+// Enhanced SMTP configuration with security options
+const smtpConfig = {
+  ...config.email.smtp,
+  secure: config.email.smtp.port === 465, // true for 465, false for other ports
+  requireTLS: config.email.smtp.port === 587, // Require TLS for port 587
+  tls: {
+    // Reject unauthorized certificates for security
+    rejectUnauthorized: true,
+  },
+  // Connection pool options for better performance
+  pool: true,
+  maxConnections: 1,
+  maxMessages: 3,
+};
+
+const transport = nodemailer.createTransport(smtpConfig);
 /* istanbul ignore next */
 if (config.env !== 'test') {
   transport
@@ -25,10 +40,52 @@ if (config.env !== 'test') {
  */
 const sendEmail = async (to, subject, text, html = null) => {
   try {
-    const msg = { from: config.email.from, to, subject, text };
-    if (html) {
-      msg.html = html;
+    // Format the from field properly (Name <email@domain.com>)
+    const fromEmail = config.email.from;
+    let fromName = fromEmail;
+    
+    // Extract email from "Name <email>" format if present
+    if (fromEmail.includes('<') && fromEmail.includes('>')) {
+      const match = fromEmail.match(/<(.+)>/);
+      if (match) {
+        // Keep fromName as is
+      }
+    } else {
+      fromName = `Dharwin Business Solutions <${fromEmail}>`;
     }
+    
+    // Use admin@dharwinbusinesssolutions.com for Reply-To
+    const replyToEmail = 'admin@dharwinbusinesssolutions.com';
+    
+    // Generate a unique message ID
+    const domain = replyToEmail.split('@')[1] || 'dharwin.com';
+    const messageId = `<${Date.now()}-${Math.random().toString(36).substr(2, 9)}@${domain}>`;
+    
+    // Ensure we have both text and HTML versions for better deliverability
+    const plainText = text || (html ? html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').trim() : '');
+    const htmlContent = html || plainText;
+    
+    // Build the email message with proper headers to prevent spam
+    const msg = {
+      from: fromName,
+      to,
+      subject,
+      text: plainText,
+      html: htmlContent,
+      // Add proper email headers to prevent spam
+      headers: {
+        'Message-ID': messageId,
+        'Date': new Date().toUTCString(),
+        'X-Mailer': 'Dharwin Email Service',
+        'Reply-To': replyToEmail,
+        // Add unsubscribe header for compliance (even for transactional emails)
+        'List-Unsubscribe': `<mailto:${replyToEmail}?subject=unsubscribe>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
+      // Set priority to normal (not bulk)
+      priority: 'normal',
+    };
+    
     await transport.sendMail(msg);
     logger.info(`Email sent successfully to ${to}`);
   } catch (error) {
@@ -145,6 +202,10 @@ If you did not request any password resets, then ignore this email.`;
                 box-shadow: 0 8px 25px rgba(54, 175, 76, 0.3);
             }
             
+            .security-icon img {
+                margin: auto;
+            }
+
             h1 {
                 color: #1a202c;
                 font-size: 28px;
@@ -162,6 +223,10 @@ If you did not request any password resets, then ignore this email.`;
             .cta-section {
                 text-align: center;
                 margin: 40px 0;
+            }
+
+            .cta-section a {
+                color: #fff;
             }
             
             .button {
@@ -215,8 +280,6 @@ If you did not request any password resets, then ignore this email.`;
             .info-icon {
                 width: 32px;
                 height: 32px;
-                background: linear-gradient(135deg, #093464 0%, #0d4a7a 100%);
-                color: white;
                 border-radius: 50%;
                 display: flex;
                 align-items: center;
@@ -366,12 +429,8 @@ If you did not request any password resets, then ignore this email.`;
                 <div class="security-section">
                     <div class="security-icon">🔐</div>
                     <h1>Password Reset Request</h1>
-                    <p class="subtitle">We received a request to reset your password for your Dharwin account</p>
+                    <p class="subtitle">Hello! We received a request to reset the password for your Dharwin account. If you made this request, please click the button below to reset your password.</p>
                 </div>
-                
-                <p style="color: #4a5568; font-size: 16px; margin-bottom: 30px;">
-                    Hello! We received a request to reset the password for your Dharwin account. If you made this request, please click the button below to reset your password.
-                </p>
                 
                 <div class="cta-section">
                     <a href="${resetPasswordUrl}" class="button">Reset My Password</a>
@@ -381,7 +440,7 @@ If you did not request any password resets, then ignore this email.`;
                     <h3 class="info-title">📋 What happens next?</h3>
                     
                     <div class="info-item">
-                        <div class="info-icon">1</div>
+                        <div class="info-icon">1.</div>
                         <div class="info-content">
                             <div class="info-title-text">Click the Reset Button</div>
                             <div class="info-description">Click the "Reset My Password" button above to be taken to our secure password reset page</div>
@@ -389,7 +448,7 @@ If you did not request any password resets, then ignore this email.`;
                     </div>
                     
                     <div class="info-item">
-                        <div class="info-icon">2</div>
+                        <div class="info-icon">2.</div>
                         <div class="info-content">
                             <div class="info-title-text">Enter New Password</div>
                             <div class="info-description">Create a new, secure password that meets our security requirements</div>
@@ -397,7 +456,7 @@ If you did not request any password resets, then ignore this email.`;
                     </div>
                     
                     <div class="info-item">
-                        <div class="info-icon">3</div>
+                        <div class="info-icon">3.</div>
                         <div class="info-content">
                             <div class="info-title-text">Login with New Password</div>
                             <div class="info-description">Once reset, you can login to your account using your new password</div>
@@ -413,17 +472,10 @@ If you did not request any password resets, then ignore this email.`;
                     If you have any questions or need assistance, please don't hesitate to contact our support team. We're here to help keep your account secure.
                 </p>
                 
-                <div class="link-fallback">
-                    If the button doesn't work, copy and paste this link into your browser:<br>
-                    ${resetPasswordUrl}
-                </div>
             </div>
-            
-            <div class="divider"></div>
             
             <div class="footer">
                 <p>This email was sent from Dharwin Business Solutions</p>
-                <p>If you didn't request this password reset, please ignore this email.</p>
                 <p>© 2024 Dharwin. All rights reserved.</p>
             </div>
         </div>
@@ -528,13 +580,8 @@ If you did not create an account, then ignore this email.`;
                 <p>Thank you for registering with us. To complete your registration and activate your account, please verify your email address by clicking the button below:</p>
                 
                 <div style="text-align: center;">
-                    <a href="${verificationEmailUrl}" class="button">Verify Email Address</a>
+                    <a href="${verificationEmailUrl}" class="button" style="color: #fff;">Verify Email Address</a>
                 </div>
-                
-                <p>If the button doesn't work, you can also copy and paste this link into your browser:</p>
-                <p style="word-break: break-all; background-color: #f8f9fa; padding: 10px; border-radius: 5px; font-family: monospace;">
-                    ${verificationEmailUrl}
-                </p>
                 
                 <div class="warning">
                     <strong>Important:</strong> This verification link will expire in 24 hours for security reasons.
@@ -644,7 +691,7 @@ The Dharwin Team`;
             }
             
             .content {
-                padding: 50px 40px;
+                padding: 40px;
             }
             
             .welcome-section {
@@ -665,6 +712,9 @@ The Dharwin Team`;
                 color: white;
                 box-shadow: 0 8px 25px rgba(54, 175, 76, 0.3);
             }
+            .welcome-icon img {
+                margin: auto;
+            }
             
             h1 {
                 color: #1a202c;
@@ -683,6 +733,9 @@ The Dharwin Team`;
             .cta-section {
                 text-align: center;
                 margin: 40px 0;
+            }
+            .cta-section a {
+                color: #fff;
             }
             
             .button {
@@ -736,8 +789,6 @@ The Dharwin Team`;
             .step-number {
                 width: 32px;
                 height: 32px;
-                background: linear-gradient(135deg, #093464 0%, #0d4a7a 100%);
-                color: white;
                 border-radius: 50%;
                 display: flex;
                 align-items: center;
@@ -910,10 +961,6 @@ The Dharwin Team`;
                     <p class="subtitle">You've been invited to join our candidate management platform</p>
                 </div>
                 
-                <p style="color: #4a5568; font-size: 16px; margin-bottom: 30px;">
-                    Hello! We're excited to have you join our platform. You've been invited to complete your candidate profile and start your journey with us.
-                </p>
-                
                 <div class="cta-section">
                     <a href="${onboardUrl}" class="button">Start Your Onboarding</a>
                 </div>
@@ -927,7 +974,7 @@ The Dharwin Team`;
                     <h3 class="steps-title">📋 Your Onboarding Journey</h3>
                     
                     <div class="step">
-                        <div class="step-number">1</div>
+                        <div class="step-number">1.</div>
                         <div class="step-content">
                             <div class="step-title">Click the Onboarding Link</div>
                             <div class="step-description">Start by clicking the button above to access your personalized onboarding portal</div>
@@ -935,7 +982,7 @@ The Dharwin Team`;
                     </div>
                     
                     <div class="step">
-                        <div class="step-number">2</div>
+                        <div class="step-number">2.</div>
                         <div class="step-content">
                             <div class="step-title">Complete Personal Information</div>
                             <div class="step-description">Fill in your contact details, professional summary, and basic information</div>
@@ -943,7 +990,7 @@ The Dharwin Team`;
                     </div>
                     
                     <div class="step">
-                        <div class="step-number">3</div>
+                        <div class="step-number">3.</div>
                         <div class="step-content">
                             <div class="step-title">Upload Documents</div>
                             <div class="step-description">Upload your resume, cover letter, and any relevant certificates or portfolios</div>
@@ -951,7 +998,7 @@ The Dharwin Team`;
                     </div>
                     
                     <div class="step">
-                        <div class="step-number">4</div>
+                        <div class="step-number">4.</div>
                         <div class="step-content">
                             <div class="step-title">Review & Submit</div>
                             <div class="step-description">Review all your information and submit your complete candidate profile</div>
@@ -966,19 +1013,11 @@ The Dharwin Team`;
                 <p style="color: #4a5568; font-size: 16px; margin: 30px 0;">
                     If you have any questions or need assistance during the onboarding process, please don't hesitate to contact our support team. We're here to help!
                 </p>
-                
-                <div class="link-fallback">
-                    If the button doesn't work, copy and paste this link into your browser:<br>
-                    ${onboardUrl}
-                </div>
             </div>
-            
-            <div class="divider"></div>
             
             <div class="footer">
                 <p>This invitation was sent to you by our platform administrator.</p>
-                <p>If you believe you received this email in error, please ignore it.</p>
-                <p>© 2024 Dharwin. All rights reserved.</p>
+                <p>© 2025 Dharwin. All rights reserved.</p>
             </div>
         </div>
     </body>
@@ -1085,7 +1124,7 @@ Dharwin Team`;
             }
             
             .content {
-                padding: 50px 40px;
+                padding: 40px;
             }
             
             .share-section {
@@ -1105,6 +1144,9 @@ Dharwin Team`;
                 font-size: 36px;
                 color: white;
                 box-shadow: 0 8px 25px rgba(54, 175, 76, 0.3);
+            }
+            .share-icon img {
+                margin: auto;
             }
             
             h1 {
@@ -1158,6 +1200,9 @@ Dharwin Team`;
                 text-align: center;
                 margin: 40px 0;
             }
+            .cta-section a {
+                color: #fff;
+            }
             
             .button {
                 display: inline-block;
@@ -1210,8 +1255,6 @@ Dharwin Team`;
             .info-icon {
                 width: 32px;
                 height: 32px;
-                background: linear-gradient(135deg, #093464 0%, #0d4a7a 100%);
-                color: white;
                 border-radius: 50%;
                 display: flex;
                 align-items: center;
@@ -1358,15 +1401,10 @@ Dharwin Team`;
                 <div class="logo">
                     <img src="https://main.d17v4yz0vw03r0.amplifyapp.com/assets/images/company-logos/logo.jpeg" alt="Dharwin" class="logo-image">
                 </div>
-                <div class="tagline">Candidate Profile Shared</div>
+                <div class="tagline">A candidate profile has been shared with you</div>
             </div>
             
             <div class="content">
-                <div class="share-section">
-                    <div class="share-icon">👤</div>
-                    <h1>Candidate Profile Shared</h1>
-                    <p class="subtitle">A candidate profile has been shared with you</p>
-                </div>
                 
                 <div class="profile-preview">
                     <div class="profile-name">${candidateData.candidateName}</div>
@@ -1381,73 +1419,15 @@ Dharwin Team`;
                     <a href="${publicUrl}" class="button">View Complete Profile</a>
                 </div>
                 
-                <div class="info-section">
-                    <h3 class="info-title">📋 What you'll find in this profile</h3>
-                    
-                    <div class="info-item">
-                        <div class="info-icon">👤</div>
-                        <div class="info-content">
-                            <div class="info-title-text">Personal Information</div>
-                            <div class="info-description">Contact details, bio, and professional summary</div>
-                        </div>
-                    </div>
-                    
-                    <div class="info-item">
-                        <div class="info-icon">🎓</div>
-                        <div class="info-content">
-                            <div class="info-title-text">Qualifications</div>
-                            <div class="info-description">Educational background and certifications</div>
-                        </div>
-                    </div>
-                    
-                    <div class="info-item">
-                        <div class="info-icon">💼</div>
-                        <div class="info-content">
-                            <div class="info-title-text">Work Experience</div>
-                            <div class="info-description">Professional experience and achievements</div>
-                        </div>
-                    </div>
-                    
-                    <div class="info-item">
-                        <div class="info-icon">🛠️</div>
-                        <div class="info-content">
-                            <div class="info-title-text">Skills & Expertise</div>
-                            <div class="info-description">Technical and soft skills with proficiency levels</div>
-                        </div>
-                    </div>
-                    
-                    ${withDoc ? `
-                    <div class="info-item">
-                        <div class="info-icon">📄</div>
-                        <div class="info-content">
-                            <div class="info-title-text">Documents</div>
-                            <div class="info-description">Resume, certificates, and other relevant documents</div>
-                        </div>
-                    </div>
-                    ` : ''}
-                </div>
-                
-                <div class="shared-by">
-                    <div class="shared-by-title">Shared by</div>
-                    <div class="shared-by-info">${sharedBy}</div>
-                </div>
-                
                 <p style="color: #4a5568; font-size: 16px; margin: 30px 0; text-align: center;">
                     Click the button above to view the complete candidate profile. This link is secure and can only be accessed by you.
                 </p>
                 
-                <div class="link-fallback">
-                    If the button doesn't work, copy and paste this link into your browser:<br>
-                    ${publicUrl}
-                </div>
             </div>
-            
-            <div class="divider"></div>
             
             <div class="footer">
                 <p>This profile was shared through Dharwin Business Solutions</p>
-                <p>If you believe you received this email in error, please ignore it.</p>
-                <p>© 2024 Dharwin. All rights reserved.</p>
+                <p>© 2025 Dharwin. All rights reserved.</p>
             </div>
         </div>
     </body>
@@ -1597,6 +1577,10 @@ Dharwin Team`;
                 color: white;
                 box-shadow: 0 8px 25px rgba(54, 175, 76, 0.3);
             }
+
+            .invitation-icon img {
+                margin: auto;
+            }
             
             h1 {
                 color: #1a202c;
@@ -1660,6 +1644,10 @@ Dharwin Team`;
                 margin-right: 16px;
                 flex-shrink: 0;
             }
+
+            .detail-icon img {
+                margin: auto;
+            }
             
             .detail-content {
                 flex: 1;
@@ -1701,6 +1689,10 @@ Dharwin Team`;
             .cta-section {
                 text-align: center;
                 margin: 40px 0;
+            }
+
+            .cta-section a {
+                color: #fff;
             }
             
             .button {
@@ -1754,8 +1746,6 @@ Dharwin Team`;
             .info-icon {
                 width: 32px;
                 height: 32px;
-                background: linear-gradient(135deg, #093464 0%, #0d4a7a 100%);
-                color: white;
                 border-radius: 50%;
                 display: flex;
                 align-items: center;
@@ -1873,6 +1863,10 @@ Dharwin Team`;
                     margin-right: 0;
                     margin-bottom: 12px;
                 }
+
+                .detail-icon img {
+                    margin: auto;
+                }
                 
                 .info-section {
                     padding: 20px;
@@ -1944,7 +1938,7 @@ Dharwin Team`;
                     <h3 class="info-title">📋 How to Join</h3>
                     
                     <div class="info-item">
-                        <div class="info-icon">1</div>
+                        <div class="info-icon">1.</div>
                         <div class="info-content">
                             <div class="info-title-text">Click the Join Button</div>
                             <div class="info-description">Click the "Join Meeting" button above to access the meeting page</div>
@@ -1952,7 +1946,7 @@ Dharwin Team`;
                     </div>
                     
                     <div class="info-item">
-                        <div class="info-icon">2</div>
+                        <div class="info-icon">2.</div>
                         <div class="info-content">
                             <div class="info-title-text">Enter Your Details</div>
                             <div class="info-description">Provide your name and email address to join the meeting</div>
@@ -1960,7 +1954,7 @@ Dharwin Team`;
                     </div>
                     
                     <div class="info-item">
-                        <div class="info-icon">3</div>
+                        <div class="info-icon">3.</div>
                         <div class="info-content">
                             <div class="info-title-text">Start Video Call</div>
                             <div class="info-description">Once joined, you'll be connected to the video meeting</div>
@@ -1972,17 +1966,10 @@ Dharwin Team`;
                     We look forward to seeing you at the meeting!
                 </p>
                 
-                <div class="link-fallback">
-                    If the button doesn't work, copy and paste this link into your browser:<br>
-                    ${meetingInvitationUrl}
-                </div>
             </div>
-            
-            <div class="divider"></div>
             
             <div class="footer">
                 <p>This invitation was sent to you by the meeting organizer.</p>
-                <p>If you believe you received this email in error, please ignore it.</p>
                 <p>© 2024 Dharwin. All rights reserved.</p>
             </div>
         </div>

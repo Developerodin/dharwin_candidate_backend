@@ -1,6 +1,7 @@
 import httpStatus from 'http-status';
 import Candidate from '../models/candidate.model.js';
 import User from '../models/user.model.js';
+import Token from '../models/token.model.js';
 import { createUser, getUserByEmail, updateUserById } from './user.service.js';
 import ApiError from '../utils/ApiError.js';
 
@@ -230,7 +231,33 @@ const deleteCandidateById = async (id) => {
   if (!candidate) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Candidate not found');
   }
+  
+  // Get the owner user account
+  const ownerUser = await User.findById(candidate.owner);
+  
+  // Check if this user has any other candidates before deleting the candidate
+  // This check must happen before deleting the candidate
+  let hasOtherCandidates = false;
+  if (ownerUser && ownerUser.email === candidate.email) {
+    const otherCandidates = await Candidate.findOne({ 
+      owner: ownerUser._id,
+      _id: { $ne: id } // Exclude the current candidate
+    });
+    hasOtherCandidates = !!otherCandidates;
+  }
+  
+  // Delete the candidate
   await candidate.deleteOne();
+  
+  // If owner user exists, email matches candidate email, and no other candidates exist,
+  // delete the user account and all associated tokens to prevent login
+  if (ownerUser && ownerUser.email === candidate.email && !hasOtherCandidates) {
+    // Delete all tokens associated with this user to invalidate all sessions
+    await Token.deleteMany({ user: ownerUser._id });
+    // Delete the user account
+    await ownerUser.deleteOne();
+  }
+  
   return candidate;
 };
 
