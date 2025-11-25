@@ -40,7 +40,7 @@ function showSuccess() {
     
     // Auto-redirect to frontend after 3 seconds
     setTimeout(() => {
-        window.location.href = 'https://main.d17v4yz0vw03r0.amplifyapp.com/';
+        window.location.href = 'https://dharwinone.com/';
     }, 3000);
 }
 

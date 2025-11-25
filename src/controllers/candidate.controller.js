@@ -812,7 +812,7 @@ const generatePublicProfileHTML = (candidateData) => {
         <div class="container">
             <div class="header">
                 <div class="logo">
-                    <img src="https://main.d17v4yz0vw03r0.amplifyapp.com/assets/images/company-logos/logo.jpeg" alt="Dharwin" />
+                    <img src="https://dharwinone.com/assets/images/company-logos/logo.jpeg" alt="Dharwin" />
                 </div>
                 <div class="profile-header">
                     ${candidateData.profilePicture?.url ? `

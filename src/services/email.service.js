@@ -420,7 +420,7 @@ If you did not request any password resets, then ignore this email.`;
         <div class="email-container">
             <div class="header">
                 <div class="logo">
-                    <img src="https://main.d17v4yz0vw03r0.amplifyapp.com/assets/images/company-logos/logo.jpeg" alt="Dharwin" class="logo-image">
+                    <img src="https://dharwinone.com/assets/images/company-logos/logo.jpeg" alt="Dharwin" class="logo-image">
                 </div>
                 <div class="tagline">Secure Password Reset</div>
             </div>
@@ -571,7 +571,7 @@ If you did not create an account, then ignore this email.`;
         <div class="container">
             <div class="header">
                 <div class="logo">
-                    <img src="https://main.d17v4yz0vw03r0.amplifyapp.com/assets/images/company-logos/logo.jpeg" alt="Dharwin" class="logo-image">
+                    <img src="https://dharwinone.com/assets/images/company-logos/logo.jpeg" alt="Dharwin" class="logo-image">
                 </div>
             </div>
             
@@ -949,7 +949,7 @@ The Dharwin Team`;
         <div class="email-container">
             <div class="header">
                 <div class="logo">
-                    <img src="https://main.d17v4yz0vw03r0.amplifyapp.com/assets/images/company-logos/logo.jpeg" alt="Dharwin" class="logo-image">
+                    <img src="https://dharwinone.com/assets/images/company-logos/logo.jpeg" alt="Dharwin" class="logo-image">
                 </div>
                 <div class="tagline">Candidate Onboard Portal</div>
             </div>
@@ -1399,7 +1399,7 @@ Dharwin Team`;
         <div class="email-container">
             <div class="header">
                 <div class="logo">
-                    <img src="https://main.d17v4yz0vw03r0.amplifyapp.com/assets/images/company-logos/logo.jpeg" alt="Dharwin" class="logo-image">
+                    <img src="https://dharwinone.com/assets/images/company-logos/logo.jpeg" alt="Dharwin" class="logo-image">
                 </div>
                 <div class="tagline">A candidate profile has been shared with you</div>
             </div>
@@ -1888,7 +1888,7 @@ Dharwin Team`;
         <div class="email-container">
             <div class="header">
                 <div class="logo">
-                    <img src="https://main.d17v4yz0vw03r0.amplifyapp.com/assets/images/company-logos/logo.jpeg" alt="Dharwin" class="logo-image">
+                    <img src="https://dharwinone.com/assets/images/company-logos/logo.jpeg" alt="Dharwin" class="logo-image">
                 </div>
                 <div class="tagline">Meeting Invitation</div>
             </div>
