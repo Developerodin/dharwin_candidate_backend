@@ -9,6 +9,7 @@ import attendanceRoute from './attendance.route.js';
 import projectRoute from './project.route.js';
 import taskRoute from './task.route.js';
 import dashboardRoute from './dashboard.route.js';
+import jobRoute from './job.route.js';
 import docsRoute from './docs.route.js';
 import config from '../../config/config.js';
 
@@ -54,6 +55,10 @@ const defaultRoutes = [
   {
     path: '/dashboard',
     route: dashboardRoute,
+  },
+  {
+    path: '/jobs',
+    route: jobRoute,
   },
 ];
 

@@ -76,7 +76,8 @@
     "swagger-ui-express": "^4.1.6",
     "validator": "^13.0.0",
     "winston": "^3.2.1",
-    "xss-clean": "^0.1.4"
+    "xss-clean": "^0.1.4",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/dotenv": "^6.1.1",

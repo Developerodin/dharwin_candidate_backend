@@ -8,6 +8,8 @@ import ChatMessage from './chatMessage.model.js';
 import Project from './project.model.js';
 import Task from './task.model.js';
 import TaskComment from './taskComment.model.js';
+import Job from './job.model.js';
+import JobTemplate from './jobTemplate.model.js';
 
-export { Token, User, Candidate, Meeting, LoginLog, Attendance, ChatMessage, Project, Task, TaskComment };
+export { Token, User, Candidate, Meeting, LoginLog, Attendance, ChatMessage, Project, Task, TaskComment, Job, JobTemplate };
 
