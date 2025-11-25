@@ -55,9 +55,14 @@ app.use(compression());
 // enable cors
 const corsOptions = {
   origin: config.env === 'production' 
-    ? ['https://main.d17v4yz0vw03r0.amplifyapp.com'] 
+    ? [
+        'https://dharwinone.com',
+        'https://www.dharwinone.com'
+      ] 
     : true, // Allow all origins in development
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   optionsSuccessStatus: 200
 };
 app.use(cors(corsOptions));
