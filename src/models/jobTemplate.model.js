@@ -4,27 +4,8 @@ import paginate from './plugins/paginate.plugin.js';
 
 const jobTemplateSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true, trim: true },
-    description: { type: String, trim: true },
-    
-    // Template Content
-    templateContent: { type: String, required: true, trim: true },
-    
-    // Default values that can be used when creating jobs from template
-    defaultJobType: {
-      type: String,
-      enum: ['Full-time', 'Part-time', 'Contract', 'Temporary', 'Internship', 'Freelance'],
-    },
-    defaultSkillTags: [{ type: String, trim: true }],
-    defaultLocation: { type: String, trim: true },
-    
-    // Template Variables (placeholders that can be replaced)
-    // e.g., {{organisationName}}, {{jobTitle}}, {{location}}
-    variables: [{ 
-      name: { type: String, trim: true },
-      description: { type: String, trim: true },
-      defaultValue: { type: String, trim: true },
-    }],
+    title: { type: String, required: true, trim: true },
+    jobDescription: { type: String, required: true, trim: true },
     
     // Ownership
     createdBy: {
@@ -41,7 +22,7 @@ const jobTemplateSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-jobTemplateSchema.index({ name: 'text', description: 'text' });
+jobTemplateSchema.index({ title: 'text', jobDescription: 'text' });
 jobTemplateSchema.index({ createdBy: 1 });
 jobTemplateSchema.index({ createdAt: -1 });
 

@@ -378,35 +378,10 @@ const createJobFromTemplate = async (templateId, createdById, jobData) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'Job template not found');
   }
 
-  // Replace template variables with actual values
-  let jobDescription = template.templateContent;
-  
-  // Replace common variables
-  if (jobData.organisation?.name) {
-    jobDescription = jobDescription.replace(/\{\{organisationName\}\}/g, jobData.organisation.name);
-  }
-  if (jobData.title) {
-    jobDescription = jobDescription.replace(/\{\{jobTitle\}\}/g, jobData.title);
-  }
-  if (jobData.location) {
-    jobDescription = jobDescription.replace(/\{\{location\}\}/g, jobData.location);
-  }
-  
-  // Replace custom variables if provided
-  if (jobData.templateVariables) {
-    Object.keys(jobData.templateVariables).forEach((key) => {
-      const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
-      jobDescription = jobDescription.replace(regex, jobData.templateVariables[key]);
-    });
-  }
-
-  // Use template defaults if not provided
+  // Use template's jobDescription if not provided in jobData
   const finalJobData = {
     ...jobData,
-    jobDescription: jobDescription || jobData.jobDescription,
-    jobType: jobData.jobType || template.defaultJobType,
-    location: jobData.location || template.defaultLocation,
-    skillTags: jobData.skillTags || template.defaultSkillTags || [],
+    jobDescription: jobData.jobDescription || template.jobDescription,
     templateId: templateId,
   };
 

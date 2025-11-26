@@ -174,7 +174,7 @@ GET /v1/jobs?search=engineer&jobType=Full-time&status=Active&sortBy=createdAt:de
   "status": "Active",
   "templateId": {
     "id": "template_id",
-    "name": "Software Engineer Template"
+    "title": "Software Engineer Template"
   },
   "createdBy": {
     "id": "user_id",
@@ -310,29 +310,8 @@ The Excel file should have the following columns (case-insensitive):
 **Request Body:**
 ```json
 {
-  "name": "Software Engineer Template",
-  "description": "Template for software engineering positions",
-  "templateContent": "We are looking for a {{jobTitle}} at {{organisationName}} located in {{location}}. The ideal candidate should have...",
-  "defaultJobType": "Full-time",
-  "defaultSkillTags": ["JavaScript", "Node.js"],
-  "defaultLocation": "San Francisco, CA",
-  "variables": [
-    {
-      "name": "organisationName",
-      "description": "Name of the organisation",
-      "defaultValue": ""
-    },
-    {
-      "name": "jobTitle",
-      "description": "Job title",
-      "defaultValue": ""
-    },
-    {
-      "name": "location",
-      "description": "Job location",
-      "defaultValue": "San Francisco, CA"
-    }
-  ]
+  "title": "Software Engineer Template",
+  "jobDescription": "We are looking for an experienced software engineer to join our team. The ideal candidate should have strong programming skills and experience with modern web technologies."
 }
 ```
 
@@ -340,13 +319,8 @@ The Excel file should have the following columns (case-insensitive):
 ```json
 {
   "id": "template_id",
-  "name": "Software Engineer Template",
-  "description": "Template for software engineering positions",
-  "templateContent": "We are looking for a {{jobTitle}} at {{organisationName}}...",
-  "defaultJobType": "Full-time",
-  "defaultSkillTags": ["JavaScript", "Node.js"],
-  "defaultLocation": "San Francisco, CA",
-  "variables": [...],
+  "title": "Software Engineer Template",
+  "jobDescription": "We are looking for an experienced software engineer to join our team. The ideal candidate should have strong programming skills and experience with modern web technologies.",
   "createdBy": {
     "id": "user_id",
     "name": "John Doe",
@@ -364,20 +338,60 @@ The Excel file should have the following columns (case-insensitive):
 **GET** `/v1/jobs/templates`
 
 **Query Parameters:**
-- `name` (string, optional) - Filter by template name
+- `title` (string, optional) - Filter by template title
 - `createdBy` (string, optional) - Filter by creator user ID
 - `sortBy` (string, optional) - Sort field and order
 - `page` (number, optional) - Page number (default: 1)
 - `limit` (number, optional) - Results per page (default: 10)
 
-**Response:** `200 OK` (paginated format same as jobs list)
+**Response:** `200 OK`
+```json
+{
+  "results": [
+    {
+      "id": "template_id",
+      "title": "Software Engineer Template",
+      "jobDescription": "We are looking for an experienced software engineer...",
+      "createdBy": {
+        "id": "user_id",
+        "name": "John Doe",
+        "email": "john@example.com"
+      },
+      "usageCount": 5,
+      "lastUsedAt": "2024-01-20T14:30:00.000Z",
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "updatedAt": "2024-01-20T14:30:00.000Z"
+    }
+  ],
+  "page": 1,
+  "limit": 10,
+  "totalPages": 1,
+  "totalResults": 1
+}
+```
 
 ---
 
 ### 10. Get Job Template by ID
 **GET** `/v1/jobs/templates/:templateId`
 
-**Response:** `200 OK` (template object)
+**Response:** `200 OK`
+```json
+{
+  "id": "template_id",
+  "title": "Software Engineer Template",
+  "jobDescription": "We are looking for an experienced software engineer to join our team. The ideal candidate should have strong programming skills and experience with modern web technologies.",
+  "createdBy": {
+    "id": "user_id",
+    "name": "John Doe",
+    "email": "john@example.com"
+  },
+  "usageCount": 5,
+  "lastUsedAt": "2024-01-20T14:30:00.000Z",
+  "createdAt": "2024-01-15T10:30:00.000Z",
+  "updatedAt": "2024-01-20T14:30:00.000Z"
+}
+```
 
 ---
 
@@ -387,12 +401,28 @@ The Excel file should have the following columns (case-insensitive):
 **Request Body:** (all fields optional)
 ```json
 {
-  "name": "Updated Template Name",
-  "templateContent": "Updated template content..."
+  "title": "Updated Template Title",
+  "jobDescription": "Updated job description content..."
 }
 ```
 
-**Response:** `200 OK` (returns updated template)
+**Response:** `200 OK`
+```json
+{
+  "id": "template_id",
+  "title": "Updated Template Title",
+  "jobDescription": "Updated job description content...",
+  "createdBy": {
+    "id": "user_id",
+    "name": "John Doe",
+    "email": "john@example.com"
+  },
+  "usageCount": 5,
+  "lastUsedAt": "2024-01-20T14:30:00.000Z",
+  "createdAt": "2024-01-15T10:30:00.000Z",
+  "updatedAt": "2024-01-21T09:15:00.000Z"
+}
+```
 
 ---
 
@@ -427,14 +457,11 @@ The Excel file should have the following columns (case-insensitive):
   },
   "experienceLevel": "Senior Level",
   "status": "Active",
-  "templateVariables": {
-    "customVar1": "value1",
-    "customVar2": "value2"
-  }
+  "jobDescription": "Optional: Override template job description"
 }
 ```
 
-**Response:** `201 Created` (job object with template variables replaced in description)
+**Response:** `201 Created` (job object using template's jobDescription if not provided in request)
 
 ---
 
@@ -484,9 +511,9 @@ The Excel file should have the following columns (case-insensitive):
    - The `search` parameter searches across: title, organisation name, job description, location, and skill tags
    - Search is case-insensitive
 
-3. **Template Variables:**
-   - Common variables: `{{organisationName}}`, `{{jobTitle}}`, `{{location}}`
-   - Custom variables can be defined in template and replaced via `templateVariables` object
+3. **Job Templates:**
+   - Templates contain only `title` and `jobDescription` fields
+   - When creating a job from a template, the template's `jobDescription` is used unless overridden in the request
 
 4. **Excel Import:**
    - Supports multiple column name variations (e.g., "Job Title" or "Title")

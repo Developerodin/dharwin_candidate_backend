@@ -136,35 +136,22 @@ const importJobs = {
 };
 
 // Job Template Validations
-const templateVariable = Joi.object({
-  name: Joi.string().required().trim(),
-  description: Joi.string().optional().trim().allow('', null),
-  defaultValue: Joi.string().optional().trim().allow('', null),
-});
-
 const createJobTemplate = {
   body: Joi.object().keys({
-    name: Joi.string().required().trim().messages({
-      'any.required': 'Template name is required',
-      'string.empty': 'Template name cannot be empty',
+    title: Joi.string().required().trim().messages({
+      'any.required': 'Template title is required',
+      'string.empty': 'Template title cannot be empty',
     }),
-    description: Joi.string().optional().trim().allow('', null),
-    templateContent: Joi.string().required().trim().messages({
-      'any.required': 'Template content is required',
-      'string.empty': 'Template content cannot be empty',
+    jobDescription: Joi.string().required().trim().messages({
+      'any.required': 'Job description is required',
+      'string.empty': 'Job description cannot be empty',
     }),
-    defaultJobType: Joi.string()
-      .valid('Full-time', 'Part-time', 'Contract', 'Temporary', 'Internship', 'Freelance')
-      .optional(),
-    defaultSkillTags: Joi.array().items(Joi.string().trim()).optional(),
-    defaultLocation: Joi.string().optional().trim().allow('', null),
-    variables: Joi.array().items(templateVariable).optional(),
   }).required(),
 };
 
 const getJobTemplates = {
   query: Joi.object().keys({
-    name: Joi.string().optional(),
+    title: Joi.string().optional(),
     createdBy: Joi.string().custom(objectId).optional(),
     sortBy: Joi.string().optional(),
     limit: Joi.number().integer().optional(),
@@ -184,15 +171,8 @@ const updateJobTemplate = {
   }),
   body: Joi.object()
     .keys({
-      name: Joi.string().optional().trim(),
-      description: Joi.string().optional().trim().allow('', null),
-      templateContent: Joi.string().optional().trim(),
-      defaultJobType: Joi.string()
-        .valid('Full-time', 'Part-time', 'Contract', 'Temporary', 'Internship', 'Freelance')
-        .optional(),
-      defaultSkillTags: Joi.array().items(Joi.string().trim()).optional(),
-      defaultLocation: Joi.string().optional().trim().allow('', null),
-      variables: Joi.array().items(templateVariable).optional(),
+      title: Joi.string().optional().trim(),
+      jobDescription: Joi.string().optional().trim(),
     })
     .min(1),
 };
@@ -232,7 +212,7 @@ const createJobFromTemplate = {
       .valid('Draft', 'Active', 'Closed', 'Archived')
       .optional()
       .default('Active'),
-    templateVariables: Joi.object().optional(), // For custom variable replacement
+    jobDescription: Joi.string().optional().trim(), // Optional: override template jobDescription
   }).required(),
 };
 

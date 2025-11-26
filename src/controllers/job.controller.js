@@ -130,7 +130,7 @@ const createTemplate = catchAsync(async (req, res) => {
 });
 
 const listTemplates = catchAsync(async (req, res) => {
-  const filter = pick(req.query, ['name', 'createdBy']);
+  const filter = pick(req.query, ['title', 'createdBy']);
   
   // Add user info for filtering
   filter.userRole = req.user.role;
