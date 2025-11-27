@@ -49,6 +49,7 @@ const updateUser = {
       phoneNumber: Joi.string().optional().pattern(/^[\+]?[1-9][\d]{0,15}$/).messages({
         'string.pattern.base': 'Phone number must be a valid mobile phone number'
       }),
+      countryCode: Joi.string().optional().trim(),
       adminId: Joi.string().optional().custom(objectId),
     })
     .min(1),
