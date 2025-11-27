@@ -16,7 +16,8 @@ import {
   getDocumentStatus,
   getDocuments,
   shareCandidateProfile,
-  getPublicCandidateProfile
+  getPublicCandidateProfile,
+  resendCandidateVerificationEmail
 } from '../services/candidate.service.js';
 import { sendEmail, sendCandidateProfileShareEmail } from '../services/email.service.js';
 
@@ -59,7 +60,26 @@ const create = catchAsync(async (req, res) => {
 });
 
 const list = catchAsync(async (req, res) => {
-  const filter = pick(req.query, ['owner', 'fullName', 'email']);
+  const filter = pick(req.query, [
+    'owner', 
+    'fullName', 
+    'email',
+    // Advanced filtering parameters
+    'skills',
+    'skillLevel',
+    'experienceLevel',
+    'minYearsOfExperience',
+    'maxYearsOfExperience',
+    'salaryRangeMin',
+    'salaryRangeMax',
+    'location',
+    'city',
+    'state',
+    'country',
+    'degree',
+    'visaType',
+    'skillMatchMode'
+  ]);
   // Non-admins can see only their own
   if (req.user.role !== 'admin') {
     filter.owner = req.user.id;
@@ -1033,5 +1053,20 @@ const generatePublicProfileHTML = (candidateData) => {
 };
 
 export { shareProfile, getPublicProfile };
+
+// Resend email verification controller
+const resendVerificationEmail = catchAsync(async (req, res) => {
+  // Only admins can resend verification emails
+  if (req.user.role !== 'admin') {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Only admin can resend verification emails');
+  }
+
+  const { candidateId } = req.params;
+  const result = await resendCandidateVerificationEmail(candidateId);
+  
+  res.status(httpStatus.OK).send(result);
+});
+
+export { resendVerificationEmail };
 
 

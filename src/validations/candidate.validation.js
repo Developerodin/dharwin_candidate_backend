@@ -128,6 +128,25 @@ const getCandidates = {
     sortBy: Joi.string(),
     limit: Joi.number().integer(),
     page: Joi.number().integer(),
+    // Advanced filtering for job matching
+    skills: Joi.alternatives().try(
+      Joi.string(), // Single skill as string
+      Joi.array().items(Joi.string()) // Multiple skills as array
+    ),
+    skillLevel: Joi.string().valid('Beginner', 'Intermediate', 'Advanced', 'Expert'),
+    experienceLevel: Joi.string().valid('Entry Level', 'Mid Level', 'Senior Level', 'Executive'),
+    minYearsOfExperience: Joi.number().min(0),
+    maxYearsOfExperience: Joi.number().min(0),
+    salaryRangeMin: Joi.number().min(0),
+    salaryRangeMax: Joi.number().min(0),
+    location: Joi.string().trim(),
+    city: Joi.string().trim(),
+    state: Joi.string().trim(),
+    country: Joi.string().trim(),
+    degree: Joi.string().trim(),
+    visaType: Joi.string().trim(),
+    // Match mode: 'all' requires all skills to match, 'any' requires at least one skill to match
+    skillMatchMode: Joi.string().valid('all', 'any').default('any'),
   }),
 };
 
@@ -354,5 +373,14 @@ const shareCandidateProfile = {
 };
 
 export { shareCandidateProfile };
+
+// Resend email verification validation
+const resendVerificationEmail = {
+  params: Joi.object().keys({
+    candidateId: Joi.string().custom(objectId).required(),
+  }),
+};
+
+export { resendVerificationEmail };
 
 

@@ -26,15 +26,20 @@ router
   .patch(auth(), validate(candidateValidation.updateSalarySlip), candidateController.updateSalarySlip)
   .delete(auth(), validate(candidateValidation.deleteSalarySlip), candidateController.deleteSalarySlip);
 
+// Resend email verification route - MUST come before /:candidateId route
+router
+  .route('/:candidateId/resend-verification-email')
+  .post(auth('manageCandidates'), validate(candidateValidation.resendVerificationEmail), candidateController.resendVerificationEmail);
+
+router
+  .route('/:candidateId/export')
+  .post(auth(), validate(candidateValidation.exportCandidate), candidateController.exportProfile);
+
 router
   .route('/:candidateId')
   .get(auth(), validate(candidateValidation.getCandidate), candidateController.get)
   .patch(auth(), validate(candidateValidation.updateCandidate), candidateController.update)
   .delete(auth('manageCandidates'), validate(candidateValidation.deleteCandidate), candidateController.remove);
-
-router
-  .route('/:candidateId/export')
-  .post(auth(), validate(candidateValidation.exportCandidate), candidateController.exportProfile);
 
 // Document verification routes
 router

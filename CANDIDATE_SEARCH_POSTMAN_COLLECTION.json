@@ -1,0 +1,496 @@
+{
+  "info": {
+    "name": "Candidate Search API",
+    "description": "Advanced search and filtering for candidates",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Basic Search",
+      "item": [
+        {
+          "name": "Search by Name",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/candidates?fullName=John",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "candidates"],
+              "query": [
+                {
+                  "key": "fullName",
+                  "value": "John"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search by Email",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/candidates?email=john@example.com",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "candidates"],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "john@example.com"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Skills Filtering",
+      "item": [
+        {
+          "name": "Single Skill",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/candidates?skills=JavaScript",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "candidates"],
+              "query": [
+                {
+                  "key": "skills",
+                  "value": "JavaScript"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Multiple Skills (Any Match)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/candidates?skills=JavaScript,React&skillMatchMode=any",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "candidates"],
+              "query": [
+                {
+                  "key": "skills",
+                  "value": "JavaScript,React"
+                },
+                {
+                  "key": "skillMatchMode",
+                  "value": "any"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Multiple Skills (All Must Match)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/candidates?skills=JavaScript,React,Node.js&skillMatchMode=all",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "candidates"],
+              "query": [
+                {
+                  "key": "skills",
+                  "value": "JavaScript,React,Node.js"
+                },
+                {
+                  "key": "skillMatchMode",
+                  "value": "all"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Skill with Level",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/candidates?skills=Python&skillLevel=Expert",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "candidates"],
+              "query": [
+                {
+                  "key": "skills",
+                  "value": "Python"
+                },
+                {
+                  "key": "skillLevel",
+                  "value": "Expert"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Experience Filtering",
+      "item": [
+        {
+          "name": "By Experience Level",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/candidates?experienceLevel=Mid Level",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "candidates"],
+              "query": [
+                {
+                  "key": "experienceLevel",
+                  "value": "Mid Level"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "By Years Range",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/candidates?minYearsOfExperience=3&maxYearsOfExperience=7",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "candidates"],
+              "query": [
+                {
+                  "key": "minYearsOfExperience",
+                  "value": "3"
+                },
+                {
+                  "key": "maxYearsOfExperience",
+                  "value": "7"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Location Filtering",
+      "item": [
+        {
+          "name": "General Location",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/candidates?location=New York",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "candidates"],
+              "query": [
+                {
+                  "key": "location",
+                  "value": "New York"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Specific City",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/candidates?city=San Francisco",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "candidates"],
+              "query": [
+                {
+                  "key": "city",
+                  "value": "San Francisco"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "City and State",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/candidates?city=San Francisco&state=California",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "candidates"],
+              "query": [
+                {
+                  "key": "city",
+                  "value": "San Francisco"
+                },
+                {
+                  "key": "state",
+                  "value": "California"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Complex Queries",
+      "item": [
+        {
+          "name": "Job Matching - Senior Python Developer",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/candidates?skills=Python&experienceLevel=Senior Level&city=San Francisco",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "candidates"],
+              "query": [
+                {
+                  "key": "skills",
+                  "value": "Python"
+                },
+                {
+                  "key": "experienceLevel",
+                  "value": "Senior Level"
+                },
+                {
+                  "key": "city",
+                  "value": "San Francisco"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Full Job Match",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/candidates?skills=JavaScript,React,Node.js&skillMatchMode=all&minYearsOfExperience=3&maxYearsOfExperience=10&location=New York&degree=Computer Science",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "candidates"],
+              "query": [
+                {
+                  "key": "skills",
+                  "value": "JavaScript,React,Node.js"
+                },
+                {
+                  "key": "skillMatchMode",
+                  "value": "all"
+                },
+                {
+                  "key": "minYearsOfExperience",
+                  "value": "3"
+                },
+                {
+                  "key": "maxYearsOfExperience",
+                  "value": "10"
+                },
+                {
+                  "key": "location",
+                  "value": "New York"
+                },
+                {
+                  "key": "degree",
+                  "value": "Computer Science"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "With Pagination",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/candidates?skills=JavaScript&page=1&limit=20&sortBy=createdAt:desc",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "candidates"],
+              "query": [
+                {
+                  "key": "skills",
+                  "value": "JavaScript"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "createdAt:desc"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Education & Visa",
+      "item": [
+        {
+          "name": "Filter by Degree",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/candidates?degree=Computer Science",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "candidates"],
+              "query": [
+                {
+                  "key": "degree",
+                  "value": "Computer Science"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filter by Visa Type",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/candidates?visaType=H1B",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "candidates"],
+              "query": [
+                {
+                  "key": "visaType",
+                  "value": "H1B"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://crm-apis.dharwinbusinesssolutions.com",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "your-auth-token-here",
+      "type": "string"
+    }
+  ]
+}
+

@@ -2,7 +2,9 @@ import httpStatus from 'http-status';
 import Candidate from '../models/candidate.model.js';
 import User from '../models/user.model.js';
 import Token from '../models/token.model.js';
-import { createUser, getUserByEmail, updateUserById } from './user.service.js';
+import { createUser, getUserByEmail, updateUserById, getUserById } from './user.service.js';
+import { generateVerifyEmailToken } from './token.service.js';
+import { sendVerificationEmail } from './email.service.js';
 import ApiError from '../utils/ApiError.js';
 
 const isOwnerOrAdmin = (user, candidate) => {
@@ -197,9 +199,379 @@ const createCandidate = async (ownerId, payload) => {
   }
 };
 
+/**
+ * Calculate total years of experience from experiences array
+ */
+const calculateYearsOfExperience = (experiences) => {
+  if (!experiences || experiences.length === 0) return 0;
+  
+  let totalMonths = 0;
+  const now = new Date();
+  
+  experiences.forEach(exp => {
+    const startDate = exp.startDate ? new Date(exp.startDate) : null;
+    const endDate = exp.currentlyWorking 
+      ? now 
+      : (exp.endDate ? new Date(exp.endDate) : null);
+    
+    if (startDate && endDate) {
+      const months = (endDate.getFullYear() - startDate.getFullYear()) * 12 
+        + (endDate.getMonth() - startDate.getMonth());
+      totalMonths += Math.max(0, months);
+    }
+  });
+  
+  return Math.round((totalMonths / 12) * 10) / 10; // Round to 1 decimal place
+};
+
+/**
+ * Map years of experience to experience level
+ */
+const mapExperienceLevel = (years) => {
+  if (years < 2) return 'Entry Level';
+  if (years < 5) return 'Mid Level';
+  if (years < 10) return 'Senior Level';
+  return 'Executive';
+};
+
+/**
+ * Build MongoDB query for advanced filtering
+ */
+const buildAdvancedFilter = (filter) => {
+  const mongoFilter = {};
+  const orConditions = [];
+  
+  // Basic filters
+  if (filter.owner) mongoFilter.owner = filter.owner;
+  if (filter.fullName) {
+    mongoFilter.fullName = { $regex: filter.fullName, $options: 'i' };
+  }
+  if (filter.email) {
+    mongoFilter.email = { $regex: filter.email, $options: 'i' };
+  }
+  
+  // Skills matching
+  if (filter.skills) {
+    const skillsArray = Array.isArray(filter.skills) ? filter.skills : [filter.skills];
+    const skillNames = skillsArray.map(s => s.trim());
+    
+    if (filter.skillMatchMode === 'all') {
+      // All skills must match - use $all with regex
+      mongoFilter['skills.name'] = {
+        $all: skillNames.map(name => new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'))
+      };
+    } else {
+      // At least one skill must match (default)
+      mongoFilter['skills.name'] = {
+        $in: skillNames.map(name => new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'))
+      };
+    }
+  }
+  
+  // Skill level filtering
+  if (filter.skillLevel) {
+    mongoFilter['skills.level'] = filter.skillLevel;
+  }
+  
+  // Location matching (can match city, state, or country)
+  if (filter.location) {
+    orConditions.push(
+      { 'address.city': { $regex: filter.location, $options: 'i' } },
+      { 'address.state': { $regex: filter.location, $options: 'i' } },
+      { 'address.country': { $regex: filter.location, $options: 'i' } }
+    );
+  }
+  
+  // City matching
+  if (filter.city) {
+    mongoFilter['address.city'] = { $regex: filter.city, $options: 'i' };
+  }
+  
+  // State matching
+  if (filter.state) {
+    mongoFilter['address.state'] = { $regex: filter.state, $options: 'i' };
+  }
+  
+  // Country matching
+  if (filter.country) {
+    mongoFilter['address.country'] = { $regex: filter.country, $options: 'i' };
+  }
+  
+  // Degree matching (can match top-level degree or qualifications)
+  if (filter.degree) {
+    orConditions.push(
+      { degree: { $regex: filter.degree, $options: 'i' } },
+      { 'qualifications.degree': { $regex: filter.degree, $options: 'i' } }
+    );
+  }
+  
+  // Visa type matching
+  if (filter.visaType) {
+    orConditions.push(
+      { visaType: { $regex: filter.visaType, $options: 'i' } },
+      { customVisaType: { $regex: filter.visaType, $options: 'i' } }
+    );
+  }
+  
+  // Combine $or conditions if any exist
+  if (orConditions.length > 0) {
+    if (mongoFilter.$or) {
+      mongoFilter.$and = [
+        { $or: mongoFilter.$or },
+        { $or: orConditions }
+      ];
+      delete mongoFilter.$or;
+    } else {
+      mongoFilter.$or = orConditions;
+    }
+  }
+  
+  return mongoFilter;
+};
+
 const queryCandidates = async (filter, options) => {
-  // reuse paginate plugin interface from existing codebase (limit, page, sortBy)
-  return Candidate.paginate(filter, options);
+  // Build base MongoDB filter
+  const mongoFilter = buildAdvancedFilter(filter);
+  
+  // Check if we need aggregation pipeline for experience-based filtering
+  const needsAggregation = filter.experienceLevel || 
+                          filter.minYearsOfExperience !== undefined || 
+                          filter.maxYearsOfExperience !== undefined;
+  
+  if (needsAggregation) {
+    // Use aggregation pipeline to calculate years of experience and filter
+    const pipeline = [];
+    
+    // Match stage for basic filters
+    if (Object.keys(mongoFilter).length > 0) {
+      pipeline.push({ $match: mongoFilter });
+    }
+    
+    // Add calculated field for years of experience
+    const now = new Date();
+    pipeline.push({
+      $addFields: {
+        yearsOfExperience: {
+          $let: {
+            vars: {
+              totalDays: {
+                $reduce: {
+                  input: { $ifNull: ['$experiences', []] },
+                  initialValue: 0,
+                  in: {
+                    $add: [
+                      '$$value',
+                      {
+                        $cond: {
+                          if: {
+                            $and: [
+                              { $ne: ['$$this.startDate', null] },
+                              {
+                                $or: [
+                                  { $ifNull: ['$$this.currentlyWorking', false] },
+                                  { $ne: ['$$this.endDate', null] }
+                                ]
+                              }
+                            ]
+                          },
+                          then: {
+                            $divide: [
+                              {
+                                $subtract: [
+                                  {
+                                    $cond: {
+                                      if: { $ifNull: ['$$this.currentlyWorking', false] },
+                                      then: now,
+                                      else: '$$this.endDate'
+                                    }
+                                  },
+                                  '$$this.startDate'
+                                ]
+                              },
+                              1000 * 60 * 60 * 24 // Convert milliseconds to days
+                            ]
+                          },
+                          else: 0
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            in: {
+              $divide: ['$$totalDays', 365.25] // Convert days to years
+            }
+          }
+        }
+      }
+    });
+    
+    // Filter by experience level
+    if (filter.experienceLevel) {
+      const levelRanges = {
+        'Entry Level': { min: 0, max: 2 },
+        'Mid Level': { min: 2, max: 5 },
+        'Senior Level': { min: 5, max: 10 },
+        'Executive': { min: 10, max: 999 }
+      };
+      
+      const range = levelRanges[filter.experienceLevel];
+      const yearsFilter = { $gte: range.min };
+      if (range.max !== 999) {
+        yearsFilter.$lt = range.max;
+      }
+      pipeline.push({
+        $match: {
+          yearsOfExperience: yearsFilter
+        }
+      });
+    }
+    
+    // Filter by years of experience range
+    if (filter.minYearsOfExperience !== undefined || filter.maxYearsOfExperience !== undefined) {
+      const yearsFilter = {};
+      if (filter.minYearsOfExperience !== undefined) {
+        yearsFilter.$gte = filter.minYearsOfExperience;
+      }
+      if (filter.maxYearsOfExperience !== undefined) {
+        yearsFilter.$lte = filter.maxYearsOfExperience;
+      }
+      pipeline.push({
+        $match: {
+          yearsOfExperience: yearsFilter
+        }
+      });
+    }
+    
+    // Add pagination and sorting
+    const page = parseInt(options.page) || 1;
+    const limit = parseInt(options.limit) || 10;
+    const skip = (page - 1) * limit;
+    
+    // Count total documents (before pagination)
+    const countPipeline = [...pipeline, { $count: 'total' }];
+    const countResult = await Candidate.aggregate(countPipeline);
+    const total = countResult.length > 0 ? countResult[0].total : 0;
+    
+    // Add sorting
+    if (options.sortBy) {
+      const sortParts = options.sortBy.split(':');
+      const sortField = sortParts[0];
+      const sortOrder = sortParts[1] === 'desc' ? -1 : 1;
+      pipeline.push({ $sort: { [sortField]: sortOrder } });
+    } else {
+      pipeline.push({ $sort: { createdAt: -1 } });
+    }
+    
+    // Add pagination
+    pipeline.push({ $skip: skip });
+    pipeline.push({ $limit: limit });
+    
+    // Execute aggregation
+    const candidates = await Candidate.aggregate(pipeline);
+    
+    // Collect all unique owner IDs BEFORE population (owner is just an ID at this point)
+    const ownerIds = [...new Set(candidates
+      .map(c => c.owner)
+      .filter(Boolean)
+      .map(id => id.toString()))];
+    
+    // Fetch all users at once for better performance
+    const users = ownerIds.length > 0 
+      ? await User.find({ _id: { $in: ownerIds } }).select('_id isEmailVerified').lean()
+      : [];
+    const userMap = new Map(users.map(u => [String(u._id), u.isEmailVerified || false]));
+    
+    // Populate owner and adminId
+    const populatedCandidates = await Candidate.populate(candidates, [
+      { path: 'owner', select: 'name email isEmailVerified' },
+      { path: 'adminId', select: 'name email' }
+    ]);
+    
+    // Add isEmailVerified to each candidate from the owner user
+    const candidatesWithEmailStatus = populatedCandidates.map(candidate => {
+      const candidateObj = candidate.toObject ? candidate.toObject() : candidate;
+      // Get owner ID - handle both populated object and ID string
+      let ownerId = null;
+      if (candidateObj.owner) {
+        if (typeof candidateObj.owner === 'object' && candidateObj.owner._id) {
+          ownerId = candidateObj.owner._id.toString();
+        } else if (typeof candidateObj.owner === 'string') {
+          ownerId = candidateObj.owner;
+        } else if (candidateObj.owner.toString) {
+          ownerId = candidateObj.owner.toString();
+        }
+      }
+      
+      if (ownerId) {
+        candidateObj.isEmailVerified = userMap.get(ownerId) || false;
+      } else {
+        candidateObj.isEmailVerified = false;
+      }
+      return candidateObj;
+    });
+    
+    return {
+      results: candidatesWithEmailStatus,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      totalResults: total
+    };
+  } else {
+    // Use simple pagination for non-experience-based filters
+    const result = await Candidate.paginate(mongoFilter, options);
+    
+    // Manually populate with field selection including isEmailVerified
+    if (result.results && result.results.length > 0) {
+      // Collect all unique owner IDs BEFORE population (owner is just an ID at this point)
+      const ownerIds = [...new Set(result.results
+        .map(c => {
+          const owner = c.owner;
+          return owner ? owner.toString() : null;
+        })
+        .filter(Boolean))];
+      
+      // Fetch all users at once for better performance
+      const users = ownerIds.length > 0 
+        ? await User.find({ _id: { $in: ownerIds } }).select('_id isEmailVerified').lean()
+        : [];
+      const userMap = new Map(users.map(u => [String(u._id), u.isEmailVerified || false]));
+      
+      for (const candidate of result.results) {
+        await candidate.populate([
+          { path: 'owner', select: 'name email isEmailVerified' },
+          { path: 'adminId', select: 'name email' }
+        ]);
+      }
+      
+      // Convert to plain objects and add isEmailVerified
+      result.results = result.results.map(candidate => {
+        const candidateObj = candidate.toObject ? candidate.toObject() : candidate;
+        // Get owner ID - handle both populated object and ID string
+        let ownerId = null;
+        if (candidateObj.owner) {
+          if (typeof candidateObj.owner === 'object' && candidateObj.owner._id) {
+            ownerId = candidateObj.owner._id.toString();
+          } else if (typeof candidateObj.owner === 'string') {
+            ownerId = candidateObj.owner;
+          } else if (candidateObj.owner.toString) {
+            ownerId = candidateObj.owner.toString();
+          }
+        }
+        
+        if (ownerId) {
+          candidateObj.isEmailVerified = userMap.get(ownerId) || false;
+        } else {
+          candidateObj.isEmailVerified = false;
+        }
+        return candidateObj;
+      });
+    }
+    
+    return result;
+  }
 };
 
 const getCandidateById = async (id) => {
@@ -624,6 +996,52 @@ const getPublicCandidateProfile = async (candidateId, token, data) => {
   return candidateData;
 };
 
+/**
+ * Resend email verification link for a candidate
+ * Only admins can resend verification emails
+ * Only works if the candidate's user account exists and email is not verified
+ * @param {string} candidateId
+ * @returns {Promise<Object>}
+ */
+const resendCandidateVerificationEmail = async (candidateId) => {
+  // Get the candidate
+  const candidate = await Candidate.findById(candidateId);
+  if (!candidate) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Candidate not found');
+  }
+
+  // Find the user associated with this candidate
+  // First try to find by email (most common case)
+  let user = await getUserByEmail(candidate.email);
+  
+  // If not found by email, try to find by owner ID
+  if (!user && candidate.owner) {
+    user = await getUserById(candidate.owner);
+  }
+
+  // If user doesn't exist, throw error
+  if (!user) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'No user account found for this candidate. Cannot send verification email.');
+  }
+
+  // Check if email is already verified
+  if (user.isEmailVerified) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Email is already verified for this candidate.');
+  }
+
+  // Generate verification token and send email
+  const verifyEmailToken = await generateVerifyEmailToken(user);
+  await sendVerificationEmail(candidate.email, verifyEmailToken);
+
+  return {
+    success: true,
+    message: 'Verification email sent successfully',
+    candidateId: candidate._id,
+    candidateEmail: candidate.email,
+    candidateName: candidate.fullName
+  };
+};
+
 export {
   createCandidate,
   queryCandidates,
@@ -645,6 +1063,8 @@ export {
   // Profile sharing
   shareCandidateProfile,
   getPublicCandidateProfile,
+  // Email verification
+  resendCandidateVerificationEmail,
 };
 
 

@@ -190,6 +190,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (response.ok) {
                 showSuccess('Password reset successfully! You can now login with your new password.');
                 document.getElementById('resetPasswordForm').style.display = 'none';
+                document.getElementById('loginButtonContainer').style.display = 'block';
             } else {
                 const errorData = await response.json();
                 showError(errorData.message || 'Password reset failed. Please try again.');
