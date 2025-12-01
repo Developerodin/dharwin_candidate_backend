@@ -14,6 +14,7 @@ import {
   getScreenShareToken as getScreenShareTokenService,
   shareMeeting as shareMeetingService,
 } from '../services/meeting.service.js';
+import { logActivity } from '../services/recruiterActivity.service.js';
 
 /**
  * Create a new meeting
@@ -22,6 +23,19 @@ import {
  */
 const create = catchAsync(async (req, res) => {
   const meeting = await createMeeting(req.body, req.user.id);
+  
+  // Log activity if user is a recruiter and meeting is scheduled (interview)
+  if (req.user.role === 'recruiter' && meeting.scheduledAt) {
+    await logActivity(req.user.id, 'interview_scheduled', {
+      meetingId: meeting._id,
+      description: `Scheduled interview: ${meeting.title}`,
+      metadata: {
+        title: meeting.title,
+        scheduledAt: meeting.scheduledAt,
+        duration: meeting.duration,
+      },
+    });
+  }
   
   res.status(httpStatus.CREATED).json({
     success: true,
@@ -125,19 +139,22 @@ const end = catchAsync(async (req, res) => {
 });
 
 /**
- * Get user's meetings
+ * Get user's meetings (or all meetings for admin)
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
 const getUserMeetingsList = catchAsync(async (req, res) => {
   const { status, limit = 20, page = 1 } = req.query;
   
-  const result = await getUserMeetings(req.user.id, { status, limit, page });
+  // If user is admin, get all meetings; otherwise get only user's meetings
+  const getAll = req.user.role === 'admin';
+  
+  const result = await getUserMeetings(req.user.id, { status, limit, page, getAll });
   
   res.status(httpStatus.OK).json({
     success: true,
     data: result,
-    message: 'User meetings retrieved successfully',
+    message: getAll ? 'All meetings retrieved successfully' : 'User meetings retrieved successfully',
   });
 });
 

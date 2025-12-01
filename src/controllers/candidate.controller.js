@@ -17,8 +17,12 @@ import {
   getDocuments,
   shareCandidateProfile,
   getPublicCandidateProfile,
-  resendCandidateVerificationEmail
+  resendCandidateVerificationEmail,
+  addRecruiterNote,
+  addRecruiterFeedback,
+  assignRecruiterToCandidate
 } from '../services/candidate.service.js';
+import { logActivity } from '../services/recruiterActivity.service.js';
 import { sendEmail, sendCandidateProfileShareEmail } from '../services/email.service.js';
 
 const create = catchAsync(async (req, res) => {
@@ -80,8 +84,8 @@ const list = catchAsync(async (req, res) => {
     'visaType',
     'skillMatchMode'
   ]);
-  // Non-admins can see only their own
-  if (req.user.role !== 'admin') {
+  // Non-admins and non-recruiters can see only their own
+  if (req.user.role !== 'admin' && req.user.role !== 'recruiter') {
     filter.owner = req.user.id;
   }
   const options = pick(req.query, ['sortBy', 'limit', 'page']);
@@ -92,7 +96,8 @@ const list = catchAsync(async (req, res) => {
 const get = catchAsync(async (req, res) => {
   const candidate = await getCandidateById(req.params.candidateId);
   if (!candidate) throw new ApiError(httpStatus.NOT_FOUND, 'Candidate not found');
-  if (req.user.role !== 'admin' && String(candidate.owner) !== String(req.user.id)) {
+  // Admins and recruiters can access any candidate; others can only access their own
+  if (req.user.role !== 'admin' && req.user.role !== 'recruiter' && String(candidate.owner) !== String(req.user.id)) {
     throw new ApiError(httpStatus.FORBIDDEN, 'Forbidden');
   }
   res.send(candidate);
@@ -117,7 +122,8 @@ export { create, list, get, update, remove };
 const exportProfile = catchAsync(async (req, res) => {
   const candidate = await getCandidateById(req.params.candidateId);
   if (!candidate) throw new ApiError(httpStatus.NOT_FOUND, 'Candidate not found');
-  if (req.user.role !== 'admin' && String(candidate.owner) !== String(req.user.id)) {
+  // Admins and recruiters can export any candidate; others can only export their own
+  if (req.user.role !== 'admin' && req.user.role !== 'recruiter' && String(candidate.owner) !== String(req.user.id)) {
     throw new ApiError(httpStatus.FORBIDDEN, 'Forbidden');
   }
   const { email } = req.body;
@@ -1068,5 +1074,86 @@ const resendVerificationEmail = catchAsync(async (req, res) => {
 });
 
 export { resendVerificationEmail };
+
+// Recruiter notes and feedback controllers
+const addNote = catchAsync(async (req, res) => {
+  // Only recruiters and admins can add notes
+  if (req.user.role !== 'admin' && req.user.role !== 'recruiter') {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Only recruiters and admins can add notes');
+  }
+  
+  const { candidateId } = req.params;
+  const { note } = req.body;
+  const recruiterId = req.user.id;
+  
+  const candidate = await addRecruiterNote(candidateId, note, recruiterId);
+  
+  // Log activity if user is a recruiter
+  if (req.user.role === 'recruiter') {
+    await logActivity(recruiterId, 'note_added', {
+      candidateId: candidate._id,
+      description: `Added note to candidate: ${candidate.fullName}`,
+      metadata: {
+        candidateName: candidate.fullName,
+        noteLength: note.length,
+      },
+    });
+    
+    // Also log as candidate_screened if this is the first note
+    if (candidate.recruiterNotes.length === 1) {
+      await logActivity(recruiterId, 'candidate_screened', {
+        candidateId: candidate._id,
+        description: `Screened candidate: ${candidate.fullName}`,
+        metadata: {
+          candidateName: candidate.fullName,
+        },
+      });
+    }
+  }
+  
+  res.status(httpStatus.OK).send(candidate);
+});
+
+const addFeedback = catchAsync(async (req, res) => {
+  // Only recruiters and admins can add feedback
+  if (req.user.role !== 'admin' && req.user.role !== 'recruiter') {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Only recruiters and admins can add feedback');
+  }
+  
+  const { candidateId } = req.params;
+  const { feedback, rating } = req.body;
+  const recruiterId = req.user.id;
+  
+  const candidate = await addRecruiterFeedback(candidateId, feedback, rating, recruiterId);
+  
+  // Log activity if user is a recruiter
+  if (req.user.role === 'recruiter') {
+    await logActivity(recruiterId, 'feedback_added', {
+      candidateId: candidate._id,
+      description: `Added feedback to candidate: ${candidate.fullName}`,
+      metadata: {
+        candidateName: candidate.fullName,
+        rating: rating || null,
+      },
+    });
+  }
+  
+  res.status(httpStatus.OK).send(candidate);
+});
+
+const assignRecruiter = catchAsync(async (req, res) => {
+  // Only admins can assign recruiters
+  if (req.user.role !== 'admin') {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Only admins can assign recruiters');
+  }
+  
+  const { candidateId } = req.params;
+  const { recruiterId } = req.body;
+  
+  const candidate = await assignRecruiterToCandidate(candidateId, recruiterId);
+  res.status(httpStatus.OK).send(candidate);
+});
+
+export { addNote, addFeedback, assignRecruiter };
 
 

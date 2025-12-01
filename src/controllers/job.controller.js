@@ -17,11 +17,26 @@ import {
   deleteJobTemplateById,
   createJobFromTemplate,
 } from '../services/job.service.js';
+import { logActivity } from '../services/recruiterActivity.service.js';
 
 // Job CRUD
 const create = catchAsync(async (req, res) => {
   const createdById = req.user.id;
   const job = await createJob(createdById, req.body);
+  
+  // Log activity if user is a recruiter
+  if (req.user.role === 'recruiter') {
+    await logActivity(createdById, 'job_posting_created', {
+      jobId: job._id,
+      description: `Created job posting: ${job.title}`,
+      metadata: {
+        jobTitle: job.title,
+        organisation: job.organisation?.name,
+        status: job.status,
+      },
+    });
+  }
+  
   res.status(httpStatus.CREATED).send(job);
 });
 

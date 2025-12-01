@@ -35,6 +35,19 @@ router
   .route('/:candidateId/export')
   .post(auth(), validate(candidateValidation.exportCandidate), candidateController.exportProfile);
 
+// Recruiter notes and feedback routes - MUST come before /:candidateId route
+router
+  .route('/:candidateId/notes')
+  .post(auth(), validate(candidateValidation.addRecruiterNote), candidateController.addNote);
+
+router
+  .route('/:candidateId/feedback')
+  .post(auth(), validate(candidateValidation.addRecruiterFeedback), candidateController.addFeedback);
+
+router
+  .route('/:candidateId/assign-recruiter')
+  .post(auth('manageCandidates'), validate(candidateValidation.assignRecruiter), candidateController.assignRecruiter);
+
 router
   .route('/:candidateId')
   .get(auth(), validate(candidateValidation.getCandidate), candidateController.get)

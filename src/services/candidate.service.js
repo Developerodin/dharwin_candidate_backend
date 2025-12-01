@@ -9,7 +9,7 @@ import ApiError from '../utils/ApiError.js';
 
 const isOwnerOrAdmin = (user, candidate) => {
   if (!candidate) return false;
-  return user.role === 'admin' || String(candidate.owner) === String(user.id || user._id);
+  return user.role === 'admin' || user.role === 'recruiter' || String(candidate.owner) === String(user.id || user._id);
 };
 
 const calculateProfileCompletion = (candidate) => {
@@ -575,7 +575,16 @@ const queryCandidates = async (filter, options) => {
 };
 
 const getCandidateById = async (id) => {
-  return Candidate.findById(id);
+  const candidate = await Candidate.findById(id);
+  if (candidate) {
+    await candidate.populate([
+      { path: 'owner', select: 'name email' },
+      { path: 'adminId', select: 'name email' },
+      { path: 'assignedRecruiter', select: 'name email role' },
+      { path: 'recruiterNotes.addedBy', select: 'name email role' },
+    ]);
+  }
+  return candidate;
 };
 
 const updateCandidateById = async (id, updateBody, currentUser) => {
@@ -806,14 +815,14 @@ const verifyDocument = async (candidateId, documentIndex, verificationData, user
 };
 
 const getDocumentStatus = async (candidateId, user) => {
-  // Check if user has permission to view document status
-  if (user.role !== 'admin' && user.id !== candidateId) {
-    throw new ApiError(httpStatus.FORBIDDEN, 'Access denied');
-  }
-
   const candidate = await Candidate.findById(candidateId);
   if (!candidate) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Candidate not found');
+  }
+
+  // Check if user has permission to view document status
+  if (!isOwnerOrAdmin(user, candidate)) {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Access denied');
   }
 
   // Return only document information with status
@@ -839,14 +848,14 @@ const getDocumentStatus = async (candidateId, user) => {
 };
 
 const getDocuments = async (candidateId, user) => {
-  // Check if user has permission to view documents
-  if (user.role !== 'admin' && user.id !== candidateId) {
-    throw new ApiError(httpStatus.FORBIDDEN, 'Access denied');
-  }
-
   const candidate = await Candidate.findById(candidateId);
   if (!candidate) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Candidate not found');
+  }
+
+  // Check if user has permission to view documents
+  if (!isOwnerOrAdmin(user, candidate)) {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Access denied');
   }
 
   // Return all document information
@@ -1042,6 +1051,93 @@ const resendCandidateVerificationEmail = async (candidateId) => {
   };
 };
 
+/**
+ * Add recruiter note to candidate
+ */
+const addRecruiterNote = async (candidateId, note, recruiterId) => {
+  const candidate = await Candidate.findById(candidateId);
+  if (!candidate) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Candidate not found');
+  }
+  
+  candidate.recruiterNotes.push({
+    note,
+    addedBy: recruiterId,
+    addedAt: new Date(),
+  });
+  
+  await candidate.save();
+  
+  // Populate recruiter information
+  await candidate.populate([
+    { path: 'owner', select: 'name email' },
+    { path: 'adminId', select: 'name email' },
+    { path: 'assignedRecruiter', select: 'name email role' },
+    { path: 'recruiterNotes.addedBy', select: 'name email role' },
+  ]);
+  
+  return candidate;
+};
+
+/**
+ * Add recruiter feedback to candidate
+ */
+const addRecruiterFeedback = async (candidateId, feedback, rating, recruiterId) => {
+  const candidate = await Candidate.findById(candidateId);
+  if (!candidate) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Candidate not found');
+  }
+  
+  candidate.recruiterFeedback = feedback;
+  if (rating) {
+    candidate.recruiterRating = rating;
+  }
+  
+  await candidate.save();
+  
+  // Populate recruiter information
+  await candidate.populate([
+    { path: 'owner', select: 'name email' },
+    { path: 'adminId', select: 'name email' },
+    { path: 'assignedRecruiter', select: 'name email role' },
+    { path: 'recruiterNotes.addedBy', select: 'name email role' },
+  ]);
+  
+  return candidate;
+};
+
+/**
+ * Assign recruiter to candidate
+ */
+const assignRecruiterToCandidate = async (candidateId, recruiterId) => {
+  const candidate = await Candidate.findById(candidateId);
+  if (!candidate) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Candidate not found');
+  }
+  
+  // Verify recruiter exists and has recruiter role
+  const recruiter = await User.findById(recruiterId);
+  if (!recruiter) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Recruiter not found');
+  }
+  if (recruiter.role !== 'recruiter') {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'User is not a recruiter');
+  }
+  
+  candidate.assignedRecruiter = recruiterId;
+  await candidate.save();
+  
+  // Populate recruiter information
+  await candidate.populate([
+    { path: 'owner', select: 'name email' },
+    { path: 'adminId', select: 'name email' },
+    { path: 'assignedRecruiter', select: 'name email role' },
+    { path: 'recruiterNotes.addedBy', select: 'name email role' },
+  ]);
+  
+  return candidate;
+};
+
 export {
   createCandidate,
   queryCandidates,
@@ -1065,6 +1161,10 @@ export {
   getPublicCandidateProfile,
   // Email verification
   resendCandidateVerificationEmail,
+  // Recruiter notes and feedback
+  addRecruiterNote,
+  addRecruiterFeedback,
+  assignRecruiterToCandidate,
 };
 
 

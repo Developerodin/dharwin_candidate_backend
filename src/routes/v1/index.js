@@ -10,6 +10,7 @@ import projectRoute from './project.route.js';
 import taskRoute from './task.route.js';
 import dashboardRoute from './dashboard.route.js';
 import jobRoute from './job.route.js';
+import recruiterActivityRoute from './recruiterActivity.route.js';
 import docsRoute from './docs.route.js';
 import config from '../../config/config.js';
 
@@ -59,6 +60,10 @@ const defaultRoutes = [
   {
     path: '/jobs',
     route: jobRoute,
+  },
+  {
+    path: '/recruiter-activities',
+    route: recruiterActivityRoute,
   },
 ];
 

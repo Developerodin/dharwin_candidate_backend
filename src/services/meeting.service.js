@@ -308,20 +308,27 @@ const endMeeting = async (meetingId, userId) => {
 };
 
 /**
- * Get user's meetings
- * @param {string} userId - User ID
+ * Get user's meetings (or all meetings for admin)
+ * @param {string|null} userId - User ID (null for admin to get all meetings)
  * @param {Object} options - Query options
+ * @param {boolean} options.getAll - If true, get all meetings (admin only)
  * @returns {Promise<Object>}
  */
 const getUserMeetings = async (userId, options = {}) => {
-  const filter = { createdBy: userId };
-  const { limit = 20, page = 1, status } = options;
+  const { limit = 20, page = 1, status, getAll = false } = options;
+  const filter = {};
+  
+  // If not getting all meetings, filter by createdBy
+  if (!getAll && userId) {
+    filter.createdBy = userId;
+  }
   
   if (status) {
     filter.status = status;
   }
   
   const meetings = await Meeting.find(filter)
+    .populate('createdBy', 'name email role')
     .sort({ createdAt: -1 })
     .limit(limit * 1)
     .skip((page - 1) * limit)

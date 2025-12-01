@@ -116,6 +116,34 @@ const candidateSchema = new mongoose.Schema(
     // Profile completion tracking
     isProfileCompleted: { type: Number, default: 0, min: 0, max: 100 },
     isCompleted: { type: Boolean, default: false },
+    
+    // Recruiter notes and feedback
+    recruiterNotes: [{
+      note: { type: String, trim: true, required: true },
+      addedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+      },
+      addedAt: {
+        type: Date,
+        default: Date.now,
+      },
+    }],
+    recruiterFeedback: {
+      type: String,
+      trim: true,
+    },
+    recruiterRating: {
+      type: Number,
+      min: 1,
+      max: 5,
+    },
+    assignedRecruiter: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      index: true,
+    },
   },
   { timestamps: true }
 );

@@ -383,4 +383,41 @@ const resendVerificationEmail = {
 
 export { resendVerificationEmail };
 
+// Recruiter notes and feedback validations
+const addRecruiterNote = {
+  params: Joi.object().keys({
+    candidateId: Joi.string().custom(objectId).required(),
+  }),
+  body: Joi.object().keys({
+    note: Joi.string().required().trim().min(1).messages({
+      'any.required': 'Note is required',
+      'string.empty': 'Note cannot be empty',
+    }),
+  }),
+};
+
+const addRecruiterFeedback = {
+  params: Joi.object().keys({
+    candidateId: Joi.string().custom(objectId).required(),
+  }),
+  body: Joi.object().keys({
+    feedback: Joi.string().required().trim().min(1).messages({
+      'any.required': 'Feedback is required',
+      'string.empty': 'Feedback cannot be empty',
+    }),
+    rating: Joi.number().integer().min(1).max(5).optional(),
+  }),
+};
+
+const assignRecruiter = {
+  params: Joi.object().keys({
+    candidateId: Joi.string().custom(objectId).required(),
+  }),
+  body: Joi.object().keys({
+    recruiterId: Joi.string().required().custom(objectId),
+  }),
+};
+
+export { addRecruiterNote, addRecruiterFeedback, assignRecruiter };
+
 
