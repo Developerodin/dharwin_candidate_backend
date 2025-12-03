@@ -1451,6 +1451,38 @@ const sendMeetingInvitationEmail = async (to, meetingData, customMessage = null)
   const frontendUrl = config.frontendUrl || 'https://main.d17v4yz0vw03r0.amplifyapp.com';
   const meetingInvitationUrl = `${frontendUrl}/meeting/${meetingId}?token=${joinToken}`;
   
+  // Build Google Calendar event link if we have a scheduled time
+  let googleCalendarUrl = null;
+  if (scheduledAt) {
+    const start = new Date(scheduledAt);
+    const meetingDurationMinutes = Number.isFinite(Number(duration)) && Number(duration) > 0 ? Number(duration) : 30;
+    const end = new Date(start.getTime() + meetingDurationMinutes * 60 * 1000);
+
+    const formatDateForCalendar = (d) => {
+      const pad = (n) => String(n).padStart(2, '0');
+      const year = d.getUTCFullYear();
+      const month = pad(d.getUTCMonth() + 1);
+      const day = pad(d.getUTCDate());
+      const hours = pad(d.getUTCHours());
+      const minutes = pad(d.getUTCMinutes());
+      const seconds = pad(d.getUTCSeconds());
+      return `${year}${month}${day}T${hours}${minutes}${seconds}Z`;
+    };
+
+    const startStr = formatDateForCalendar(start);
+    const endStr = formatDateForCalendar(end);
+
+    const params = new URLSearchParams({
+      action: 'TEMPLATE',
+      text: title || 'Meeting',
+      dates: `${startStr}/${endStr}`,
+      details: `${description || ''}\n\nJoin the meeting: ${meetingInvitationUrl}`.trim(),
+      location: meetingInvitationUrl,
+    });
+
+    googleCalendarUrl = `https://calendar.google.com/calendar/render?${params.toString()}`;
+  }
+  
   // Format scheduled date if available
   let scheduledDateText = '';
   if (scheduledAt) {
@@ -1479,7 +1511,9 @@ Duration: ${durationText}
 
 Join the meeting: ${meetingInvitationUrl}
 
-${customMessage ? `\nMessage from organizer:\n${customMessage}\n` : ''}
+${googleCalendarUrl ? `Add to Google Calendar: ${googleCalendarUrl}\n` : ''}
+
+${customMessage ? `Message from organizer:\n${customMessage}\n` : ''}
 
 Best regards,
 Dharwin Team`;
@@ -1933,6 +1967,14 @@ Dharwin Team`;
                 <div class="cta-section">
                     <a href="${meetingInvitationUrl}" class="button">Join Meeting</a>
                 </div>
+                
+                ${googleCalendarUrl ? `
+                <div class="cta-section" style="margin-top: 10px;">
+                    <a href="${googleCalendarUrl}" class="button" style="background: linear-gradient(135deg, #4285F4 0%, #3367D6 100%); box-shadow: 0 4px 14px rgba(66, 133, 244, 0.3);">
+                        Add to Google Calendar
+                    </a>
+                </div>
+                ` : ''}
                 
                 <div class="info-section">
                     <h3 class="info-title">📋 How to Join</h3>
