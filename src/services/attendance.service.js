@@ -9,9 +9,10 @@ import pick from '../utils/pick.js';
  * @param {ObjectId} candidateId
  * @param {Date} [punchInTime] - Optional punch in time (defaults to now)
  * @param {string} [notes] - Optional notes
+ * @param {string} [timezone] - Optional timezone (e.g., 'America/New_York', 'Asia/Kolkata'). Defaults to 'UTC'
  * @returns {Promise<Attendance>}
  */
-const punchIn = async (candidateId, punchInTime = new Date(), notes) => {
+const punchIn = async (candidateId, punchInTime = new Date(), notes, timezone = 'UTC') => {
   // Check if candidate exists
   const candidate = await Candidate.findById(candidateId);
   if (!candidate) {
@@ -40,13 +41,14 @@ const punchIn = async (candidateId, punchInTime = new Date(), notes) => {
     );
   }
 
-  // Create new attendance record
+  // Create new attendance record with timezone
   const attendance = await Attendance.create({
     candidate: candidateId,
     candidateEmail: candidate.email,
     date: today,
     punchIn: punchInTime,
     notes,
+    timezone: timezone || 'UTC',
   });
 
   return attendance.populate('candidate', 'fullName email');

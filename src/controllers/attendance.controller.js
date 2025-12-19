@@ -19,7 +19,7 @@ import { getCandidateById } from '../services/candidate.service.js';
  */
 const createPunchIn = catchAsync(async (req, res) => {
   const { candidateId } = req.params;
-  const { punchInTime, notes } = req.body;
+  const { punchInTime, notes, timezone } = req.body;
 
   // Check if user has permission to punch in for this candidate
   const candidate = await getCandidateById(candidateId);
@@ -35,7 +35,8 @@ const createPunchIn = catchAsync(async (req, res) => {
   const attendance = await punchIn(
     candidateId,
     punchInTime ? new Date(punchInTime) : undefined,
-    notes
+    notes,
+    timezone || 'UTC'
   );
 
   res.status(httpStatus.CREATED).send({

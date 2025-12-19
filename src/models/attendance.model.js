@@ -55,6 +55,12 @@ const attendanceSchema = mongoose.Schema(
       type: String,
       trim: true,
     },
+    timezone: {
+      type: String,
+      trim: true,
+      default: 'UTC',
+      // Common timezones: 'America/New_York', 'America/Los_Angeles', 'Asia/Kolkata', 'UTC'
+    },
   },
   {
     timestamps: true,
