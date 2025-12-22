@@ -479,17 +479,17 @@ const queryCandidates = async (filter, options) => {
     
     // Fetch all users at once for better performance
     const users = ownerIds.length > 0 
-      ? await User.find({ _id: { $in: ownerIds } }).select('_id isEmailVerified').lean()
+      ? await User.find({ _id: { $in: ownerIds } }).select('_id isEmailVerified countryCode').lean()
       : [];
-    const userMap = new Map(users.map(u => [String(u._id), u.isEmailVerified || false]));
+    const userMap = new Map(users.map(u => [String(u._id), { isEmailVerified: u.isEmailVerified || false, countryCode: u.countryCode || null }]));
     
     // Populate owner and adminId
     const populatedCandidates = await Candidate.populate(candidates, [
-      { path: 'owner', select: 'name email isEmailVerified' },
+      { path: 'owner', select: 'name email isEmailVerified countryCode' },
       { path: 'adminId', select: 'name email' }
     ]);
     
-    // Add isEmailVerified to each candidate from the owner user
+    // Add isEmailVerified and countryCode to each candidate from the owner user
     const candidatesWithEmailStatus = populatedCandidates.map(candidate => {
       const candidateObj = candidate.toObject ? candidate.toObject() : candidate;
       // Get owner ID - handle both populated object and ID string
@@ -505,9 +505,12 @@ const queryCandidates = async (filter, options) => {
       }
       
       if (ownerId) {
-        candidateObj.isEmailVerified = userMap.get(ownerId) || false;
+        const userData = userMap.get(ownerId) || { isEmailVerified: false, countryCode: null };
+        candidateObj.isEmailVerified = userData.isEmailVerified;
+        candidateObj.countryCode = userData.countryCode;
       } else {
         candidateObj.isEmailVerified = false;
+        candidateObj.countryCode = null;
       }
       return candidateObj;
     });
@@ -535,18 +538,18 @@ const queryCandidates = async (filter, options) => {
       
       // Fetch all users at once for better performance
       const users = ownerIds.length > 0 
-        ? await User.find({ _id: { $in: ownerIds } }).select('_id isEmailVerified').lean()
+        ? await User.find({ _id: { $in: ownerIds } }).select('_id isEmailVerified countryCode').lean()
         : [];
-      const userMap = new Map(users.map(u => [String(u._id), u.isEmailVerified || false]));
+      const userMap = new Map(users.map(u => [String(u._id), { isEmailVerified: u.isEmailVerified || false, countryCode: u.countryCode || null }]));
       
       for (const candidate of result.results) {
         await candidate.populate([
-          { path: 'owner', select: 'name email isEmailVerified' },
+          { path: 'owner', select: 'name email isEmailVerified countryCode' },
           { path: 'adminId', select: 'name email' }
         ]);
       }
       
-      // Convert to plain objects and add isEmailVerified
+      // Convert to plain objects and add isEmailVerified and countryCode
       result.results = result.results.map(candidate => {
         const candidateObj = candidate.toObject ? candidate.toObject() : candidate;
         // Get owner ID - handle both populated object and ID string
@@ -562,9 +565,12 @@ const queryCandidates = async (filter, options) => {
         }
         
         if (ownerId) {
-          candidateObj.isEmailVerified = userMap.get(ownerId) || false;
+          const userData = userMap.get(ownerId) || { isEmailVerified: false, countryCode: null };
+          candidateObj.isEmailVerified = userData.isEmailVerified;
+          candidateObj.countryCode = userData.countryCode;
         } else {
           candidateObj.isEmailVerified = false;
+          candidateObj.countryCode = null;
         }
         return candidateObj;
       });
@@ -578,11 +584,29 @@ const getCandidateById = async (id) => {
   const candidate = await Candidate.findById(id);
   if (candidate) {
     await candidate.populate([
-      { path: 'owner', select: 'name email' },
+      { path: 'owner', select: 'name email countryCode' },
       { path: 'adminId', select: 'name email' },
       { path: 'assignedRecruiter', select: 'name email role' },
       { path: 'recruiterNotes.addedBy', select: 'name email role' },
     ]);
+    
+    // Add countryCode from owner to candidate for consistency with list endpoint
+    let ownerCountryCode = null;
+    if (candidate.owner && typeof candidate.owner === 'object' && candidate.owner.countryCode) {
+      ownerCountryCode = candidate.owner.countryCode;
+    } else if (candidate.owner) {
+      // If owner is just an ID, fetch the user to get countryCode
+      const User = (await import('../models/user.model.js')).default;
+      const owner = await User.findById(candidate.owner).select('countryCode').lean();
+      if (owner && owner.countryCode) {
+        ownerCountryCode = owner.countryCode;
+      }
+    }
+    
+    // Set countryCode on the document (field exists in schema, so it will be included in toJSON)
+    if (ownerCountryCode !== null) {
+      candidate.countryCode = ownerCountryCode;
+    }
   }
   return candidate;
 };

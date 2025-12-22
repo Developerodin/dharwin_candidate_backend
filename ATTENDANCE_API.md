@@ -36,7 +36,7 @@ Authorization: Bearer <your-jwt-token>
 
 **Request Example:**
 ```javascript
-// Using fetch
+// Using fetch - US Eastern Time
 const response = await fetch('/v1/attendance/punch-in/507f1f77bcf86cd799439011', {
   method: 'POST',
   headers: {
@@ -45,7 +45,20 @@ const response = await fetch('/v1/attendance/punch-in/507f1f77bcf86cd799439011',
   },
   body: JSON.stringify({
     notes: 'Starting work',
-    timezone: 'America/New_York'
+    timezone: 'America/New_York'  // US Eastern Time
+  })
+});
+
+// India timezone example
+const responseIndia = await fetch('/v1/attendance/punch-in/507f1f77bcf86cd799439011', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer <your-jwt-token>'
+  },
+  body: JSON.stringify({
+    notes: 'Starting work',
+    timezone: 'Asia/Kolkata'  // India Standard Time (IST)
   })
 });
 
@@ -124,7 +137,8 @@ const data = await response.json();
 ```json
 {
   "punchOutTime": "2024-01-15T18:00:00.000Z",  // Optional: ISO 8601 date string. Defaults to current time if not provided
-  "notes": "Completed daily tasks"              // Optional: Additional notes
+  "notes": "Completed daily tasks",              // Optional: Additional notes
+  "timezone": "America/New_York"                // Optional: IANA timezone (e.g., 'America/New_York', 'Asia/Kolkata', 'UTC'). If not provided, uses timezone from punch-in record
 }
 ```
 
@@ -137,7 +151,8 @@ const response = await fetch('/v1/attendance/punch-out/507f1f77bcf86cd799439011'
     'Authorization': 'Bearer <your-jwt-token>'
   },
   body: JSON.stringify({
-    notes: 'Completed daily tasks'
+    notes: 'Completed daily tasks',
+    timezone: 'America/New_York'
   })
 });
 
@@ -574,7 +589,7 @@ const useAttendance = (candidateId) => {
     }
   };
 
-  const punchOut = async (notes) => {
+  const punchOut = async (notes, timezone) => {
     try {
       const response = await fetch(`/v1/attendance/punch-out/${candidateId}`, {
         method: 'POST',
@@ -582,7 +597,10 @@ const useAttendance = (candidateId) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify({ notes })
+        body: JSON.stringify({ 
+          notes,
+          timezone: timezone || undefined  // If not provided, uses timezone from punch-in record
+        })
       });
       
       if (!response.ok) {
@@ -628,7 +646,9 @@ const AttendanceButton = ({ candidateId }) => {
 
   const handlePunchIn = async () => {
     try {
+      // Example: Punch in with US Eastern Time
       await punchIn('Starting work', 'America/New_York');
+      // Or with India timezone: await punchIn('Starting work', 'Asia/Kolkata');
       alert('Punched in successfully!');
     } catch (error) {
       alert(`Error: ${error.message}`);
@@ -637,7 +657,9 @@ const AttendanceButton = ({ candidateId }) => {
 
   const handlePunchOut = async () => {
     try {
-      await punchOut('Completed work');
+      // Example: Punch out with US Eastern Time (or omit timezone to use punch-in timezone)
+      await punchOut('Completed work', 'America/New_York');
+      // Or with India timezone: await punchOut('Completed work', 'Asia/Kolkata');
       alert('Punched out successfully!');
     } catch (error) {
       alert(`Error: ${error.message}`);
@@ -669,9 +691,13 @@ export default AttendanceButton;
 
 1. **Timezone Handling:**
    - Timezone is stored per attendance record
-   - If not provided, defaults to 'UTC'
+   - For punch-in: If not provided, defaults to 'UTC'
+   - For punch-out: If not provided, uses the timezone from the punch-in record
    - Recommended: Use browser's timezone: `Intl.DateTimeFormat().resolvedOptions().timeZone`
-   - Common timezones: `'America/New_York'`, `'America/Los_Angeles'`, `'Asia/Kolkata'`, `'UTC'`
+   - Common timezones:
+     - **US**: `'America/New_York'` (Eastern), `'America/Chicago'` (Central), `'America/Denver'` (Mountain), `'America/Los_Angeles'` (Pacific)
+     - **India**: `'Asia/Kolkata'` (IST - Indian Standard Time)
+     - **UTC**: `'UTC'`
 
 2. **Auto Punch-Out:**
    - Candidates are automatically punched out after 9 hours (configurable)

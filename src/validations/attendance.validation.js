@@ -5,7 +5,7 @@ const punchIn = {
   body: Joi.object().keys({
     punchInTime: Joi.date().optional(),
     notes: Joi.string().optional().trim().allow('', null),
-    timezone: Joi.string().optional().trim().description('Timezone (e.g., America/New_York, Asia/Kolkata, UTC). If not provided, defaults to UTC.'),
+    timezone: Joi.string().optional().trim().description('Timezone (e.g., America/New_York, America/Los_Angeles, Asia/Kolkata, UTC). If not provided, defaults to UTC.'),
   }),
   params: Joi.object().keys({
     candidateId: Joi.string().custom(objectId).required(),
@@ -16,6 +16,7 @@ const punchOut = {
   body: Joi.object().keys({
     punchOutTime: Joi.date().optional(),
     notes: Joi.string().optional().trim().allow('', null),
+    timezone: Joi.string().optional().trim().description('Timezone (e.g., America/New_York, America/Los_Angeles, Asia/Kolkata, UTC). If not provided, uses the timezone from punch-in record.'),
   }),
   params: Joi.object().keys({
     candidateId: Joi.string().custom(objectId).required(),

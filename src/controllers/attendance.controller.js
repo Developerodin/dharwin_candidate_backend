@@ -51,7 +51,7 @@ const createPunchIn = catchAsync(async (req, res) => {
  */
 const createPunchOut = catchAsync(async (req, res) => {
   const { candidateId } = req.params;
-  const { punchOutTime, notes } = req.body;
+  const { punchOutTime, notes, timezone } = req.body;
 
   // Check if user has permission to punch out for this candidate
   const candidate = await getCandidateById(candidateId);
@@ -67,7 +67,8 @@ const createPunchOut = catchAsync(async (req, res) => {
   const attendance = await punchOut(
     candidateId,
     punchOutTime ? new Date(punchOutTime) : undefined,
-    notes
+    notes,
+    timezone
   );
 
   res.status(httpStatus.OK).send({

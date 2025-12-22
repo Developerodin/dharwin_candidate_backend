@@ -59,9 +59,10 @@ const punchIn = async (candidateId, punchInTime = new Date(), notes, timezone = 
  * @param {ObjectId} candidateId
  * @param {Date} [punchOutTime] - Optional punch out time (defaults to now)
  * @param {string} [notes] - Optional notes
+ * @param {string} [timezone] - Optional timezone (e.g., 'America/New_York', 'Asia/Kolkata'). If not provided, uses timezone from punch-in record
  * @returns {Promise<Attendance>}
  */
-const punchOut = async (candidateId, punchOutTime = new Date(), notes) => {
+const punchOut = async (candidateId, punchOutTime = new Date(), notes, timezone) => {
   // Get today's date (normalized to start of day)
   const today = new Date(punchOutTime);
   today.setHours(0, 0, 0, 0);
@@ -97,6 +98,10 @@ const punchOut = async (candidateId, punchOutTime = new Date(), notes) => {
   attendance.duration = punchOutTime.getTime() - attendance.punchIn.getTime();
   if (notes) {
     attendance.notes = notes;
+  }
+  // Update timezone if provided, otherwise keep the timezone from punch-in
+  if (timezone) {
+    attendance.timezone = timezone;
   }
   await attendance.save();
 
