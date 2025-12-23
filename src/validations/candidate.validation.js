@@ -63,10 +63,10 @@ const singleCandidateSchema = Joi.object().keys({
   fullName: Joi.string().required(),
   email: Joi.string().email().required(),
   phoneNumber: Joi.string()
-    .pattern(/^[6-9]\d{9}$/)
+    .pattern(/^[2-9]\d{9}$/)
     .required()
     .messages({
-      'string.pattern.base': 'Phone number must be a valid 10-digit Indian mobile number (without +91 prefix)',
+      'string.pattern.base': 'Phone number must be a valid 10-digit number (US or Indian format)',
       'any.required': 'Phone number is required'
     }),
   password: Joi.string().custom(passwordValidator), // only admin will use
@@ -165,9 +165,9 @@ const updateCandidate = {
       fullName: Joi.string(),
       email: Joi.string().email(),
       phoneNumber: Joi.string()
-        .pattern(/^[6-9]\d{9}$/)
+        .pattern(/^[2-9]\d{9}$/)
         .messages({
-          'string.pattern.base': 'Phone number must be a valid 10-digit Indian mobile number (without +91 prefix)'
+          'string.pattern.base': 'Phone number must be a valid 10-digit number (US or Indian format)'
         }),
       profilePicture: Joi.object({
         url: Joi.string().uri().optional(),
@@ -218,10 +218,10 @@ const createCandidateByAdmin = {
       email: Joi.string().email().required(),
       password: Joi.string().custom(passwordValidator).required(), // Required for admin-created candidates
       phoneNumber: Joi.string()
-        .pattern(/^[6-9]\d{9}$/)
+        .pattern(/^[2-9]\d{9}$/)
         .required()
         .messages({
-          'string.pattern.base': 'Phone number must be a valid 10-digit Indian mobile number (without +91 prefix)',
+          'string.pattern.base': 'Phone number must be a valid 10-digit number (US or Indian format)',
           'any.required': 'Phone number is required'
         }),
       profilePicture: Joi.object({
