@@ -11,6 +11,7 @@ import taskRoute from './task.route.js';
 import dashboardRoute from './dashboard.route.js';
 import jobRoute from './job.route.js';
 import recruiterActivityRoute from './recruiterActivity.route.js';
+import supportTicketRoute from './supportTicket.route.js';
 import docsRoute from './docs.route.js';
 import config from '../../config/config.js';
 
@@ -64,6 +65,10 @@ const defaultRoutes = [
   {
     path: '/recruiter-activities',
     route: recruiterActivityRoute,
+  },
+  {
+    path: '/support-tickets',
+    route: supportTicketRoute,
   },
 ];
 
