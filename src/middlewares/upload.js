@@ -143,4 +143,68 @@ const uploadVideo = (fieldName = 'file') => {
   };
 };
 
-export { uploadSingle, uploadMultiple, uploadVideo };
+// File filter for images and videos
+const imageVideoFileFilter = (req, file, cb) => {
+  const allowedImageTypes = [
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+    'image/bmp',
+    'image/svg+xml',
+  ];
+  
+  const allowedVideoTypes = [
+    'video/mp4',
+    'video/webm',
+    'video/quicktime',
+    'video/x-msvideo',
+    'video/x-matroska',
+    'video/avi',
+    'video/mov',
+  ];
+  
+  const allowedTypes = [...allowedImageTypes, ...allowedVideoTypes];
+
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new ApiError(
+      httpStatus.BAD_REQUEST, 
+      `File type ${file.mimetype} is not allowed. Allowed types: Images (JPEG, PNG, GIF, WEBP, BMP, SVG) and Videos (MP4, WEBM, MOV, AVI, MKV)`
+    ), false);
+  }
+};
+
+// Configure multer for images and videos (support tickets)
+const imageVideoUpload = multer({
+  storage,
+  fileFilter: imageVideoFileFilter,
+  limits: {
+    fileSize: 100 * 1024 * 1024, // 100MB limit for images and videos
+    files: 10, // Maximum 10 files per request
+  },
+});
+
+// Middleware for multiple image/video file uploads (for support tickets)
+const uploadImagesVideos = (fieldName = 'attachments', maxCount = 10) => {
+  return (req, res, next) => {
+    imageVideoUpload.array(fieldName, maxCount)(req, res, (err) => {
+      if (err) {
+        if (err instanceof multer.MulterError) {
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            return next(new ApiError(httpStatus.BAD_REQUEST, 'File size too large. Maximum size is 100MB per file.'));
+          }
+          if (err.code === 'LIMIT_FILE_COUNT') {
+            return next(new ApiError(httpStatus.BAD_REQUEST, `Too many files. Maximum ${maxCount} files allowed.`));
+          }
+        }
+        return next(err);
+      }
+      next();
+    });
+  };
+};
+
+export { uploadSingle, uploadMultiple, uploadVideo, uploadImagesVideos };

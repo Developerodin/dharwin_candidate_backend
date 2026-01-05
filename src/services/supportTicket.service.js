@@ -3,21 +3,43 @@ import SupportTicket from '../models/supportTicket.model.js';
 import Candidate from '../models/candidate.model.js';
 import User from '../models/user.model.js';
 import ApiError from '../utils/ApiError.js';
+import { uploadMultipleFilesToS3 } from './upload.service.js';
 
 /**
  * Create a support ticket
  * @param {Object} ticketData - Ticket data
  * @param {string} userId - User ID who created the ticket
+ * @param {Array} files - Array of uploaded files (optional)
  * @returns {Promise<SupportTicket>}
  */
-const createSupportTicket = async (ticketData, userId) => {
+const createSupportTicket = async (ticketData, userId, files = []) => {
   // Find candidate associated with the user
   const candidate = await Candidate.findOne({ owner: userId });
+  
+  // Handle file uploads if any
+  let attachments = [];
+  if (files && files.length > 0) {
+    try {
+      // Upload files to S3 in the support-tickets folder
+      const uploadResults = await uploadMultipleFilesToS3(files, userId, 'support-tickets');
+      attachments = uploadResults.map((result) => ({
+        key: result.key,
+        url: result.url,
+        originalName: result.originalName,
+        size: result.size,
+        mimeType: result.mimeType,
+        uploadedAt: new Date(),
+      }));
+    } catch (error) {
+      throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, `Failed to upload attachments: ${error.message}`);
+    }
+  }
   
   const ticket = await SupportTicket.create({
     ...ticketData,
     createdBy: userId,
     candidate: candidate?._id || null,
+    attachments,
   });
 
   // Populate createdBy and candidate

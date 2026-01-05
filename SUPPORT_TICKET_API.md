@@ -17,13 +17,15 @@ Authorization: Bearer <access_token>
 
 ### 1. Create Support Ticket
 
-Create a new support ticket.
+Create a new support ticket with optional image/video attachments.
 
 **Endpoint:** `POST /v1/support-tickets`
 
 **Access:** Authenticated users (candidates)
 
-**Request Body:**
+**Content-Type:** `multipart/form-data` (when uploading files) or `application/json` (without files)
+
+**Request Body (JSON - without files):**
 ```json
 {
   "title": "Issue with profile upload",
@@ -32,6 +34,25 @@ Create a new support ticket.
   "category": "Technical"  // Optional: Any string (default: "General")
 }
 ```
+
+**Request Body (FormData - with files):**
+```
+Content-Type: multipart/form-data
+
+Fields:
+- title: "Issue with profile upload" (required)
+- description: "I'm unable to upload my profile picture..." (required)
+- priority: "Medium" (optional)
+- category: "Technical" (optional)
+- attachments: [File] (optional, can be multiple)
+```
+
+**File Upload Requirements:**
+- **Field Name:** `attachments` (use the same field name for all files)
+- **Maximum Files:** 10 files per request
+- **File Size Limit:** 100MB per file
+- **Allowed Image Types:** JPEG, JPG, PNG, GIF, WEBP, BMP, SVG
+- **Allowed Video Types:** MP4, WEBM, MOV, AVI, MKV
 
 **Response:** `201 Created`
 ```json
@@ -43,6 +64,24 @@ Create a new support ticket.
   "status": "Open",
   "priority": "Medium",
   "category": "Technical",
+  "attachments": [
+    {
+      "key": "support-tickets/user123/2024-01-15/screenshot.png",
+      "url": "https://s3.amazonaws.com/bucket/support-tickets/...?X-Amz-Algorithm=...",
+      "originalName": "screenshot.png",
+      "size": 245678,
+      "mimeType": "image/png",
+      "uploadedAt": "2024-01-15T10:30:00.000Z"
+    },
+    {
+      "key": "support-tickets/user123/2024-01-15/error-video.mp4",
+      "url": "https://s3.amazonaws.com/bucket/support-tickets/...?X-Amz-Algorithm=...",
+      "originalName": "error-video.mp4",
+      "size": 5242880,
+      "mimeType": "video/mp4",
+      "uploadedAt": "2024-01-15T10:30:00.000Z"
+    }
+  ],
   "createdBy": {
     "id": "507f1f77bcf86cd799439012",
     "name": "John Doe",
@@ -70,6 +109,277 @@ Create a new support ticket.
 - `description`: Required, 10-5000 characters
 - `priority`: Optional, must be one of: "Low", "Medium", "High", "Urgent"
 - `category`: Optional, max 100 characters
+- `attachments`: Optional, up to 10 files, 100MB per file
+
+**Error Responses:**
+
+**400 Bad Request - Invalid File Type:**
+```json
+{
+  "code": 400,
+  "message": "File type application/pdf is not allowed. Allowed types: Images (JPEG, PNG, GIF, WEBP, BMP, SVG) and Videos (MP4, WEBM, MOV, AVI, MKV)"
+}
+```
+
+**400 Bad Request - File Too Large:**
+```json
+{
+  "code": 400,
+  "message": "File size too large. Maximum size is 100MB per file."
+}
+```
+
+**400 Bad Request - Too Many Files:**
+```json
+{
+  "code": 400,
+  "message": "Too many files. Maximum 10 files allowed."
+}
+```
+
+**Frontend Implementation Examples:**
+
+**Using Fetch API:**
+```javascript
+const createSupportTicketWithFiles = async (ticketData, files) => {
+  const formData = new FormData();
+  
+  // Add text fields
+  formData.append('title', ticketData.title);
+  formData.append('description', ticketData.description);
+  if (ticketData.priority) {
+    formData.append('priority', ticketData.priority);
+  }
+  if (ticketData.category) {
+    formData.append('category', ticketData.category);
+  }
+  
+  // Add files (multiple files with same field name)
+  if (files && files.length > 0) {
+    files.forEach((file) => {
+      formData.append('attachments', file);
+    });
+  }
+  
+  const response = await fetch('/v1/support-tickets', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`
+      // Don't set Content-Type header - browser will set it automatically with boundary
+    },
+    body: formData
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message);
+  }
+  
+  return await response.json();
+};
+
+// Usage
+const files = document.getElementById('fileInput').files; // FileList
+const ticket = await createSupportTicketWithFiles(
+  {
+    title: 'Bug Report',
+    description: 'The application crashes when clicking this button.',
+    priority: 'High',
+    category: 'Technical'
+  },
+  Array.from(files)
+);
+```
+
+**Using Axios:**
+```javascript
+import axios from 'axios';
+
+const createSupportTicketWithFiles = async (ticketData, files) => {
+  const formData = new FormData();
+  
+  // Add text fields
+  formData.append('title', ticketData.title);
+  formData.append('description', ticketData.description);
+  if (ticketData.priority) {
+    formData.append('priority', ticketData.priority);
+  }
+  if (ticketData.category) {
+    formData.append('category', ticketData.category);
+  }
+  
+  // Add files
+  if (files && files.length > 0) {
+    files.forEach((file) => {
+      formData.append('attachments', file);
+    });
+  }
+  
+  const response = await axios.post('/v1/support-tickets', formData, {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+  
+  return response.data;
+};
+
+// Usage
+const files = document.getElementById('fileInput').files;
+const ticket = await createSupportTicketWithFiles(
+  {
+    title: 'Bug Report',
+    description: 'The application crashes when clicking this button.',
+    priority: 'High',
+    category: 'Technical'
+  },
+  Array.from(files)
+);
+```
+
+**React Component Example:**
+```jsx
+import React, { useState } from 'react';
+import axios from 'axios';
+
+const SupportTicketForm = () => {
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [priority, setPriority] = useState('Medium');
+  const [category, setCategory] = useState('General');
+  const [files, setFiles] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleFileChange = (e) => {
+    setFiles(Array.from(e.target.files));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('title', title);
+      formData.append('description', description);
+      formData.append('priority', priority);
+      formData.append('category', category);
+      
+      // Add all selected files
+      files.forEach((file) => {
+        formData.append('attachments', file);
+      });
+
+      const token = localStorage.getItem('token');
+      const response = await axios.post('/v1/support-tickets', formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      console.log('Ticket created:', response.data);
+      // Reset form or redirect
+      setTitle('');
+      setDescription('');
+      setFiles([]);
+      alert('Support ticket created successfully!');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to create support ticket');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div>
+        <label>Title:</label>
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          required
+          minLength={5}
+          maxLength={200}
+        />
+      </div>
+      
+      <div>
+        <label>Description:</label>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          required
+          minLength={10}
+          maxLength={5000}
+        />
+      </div>
+      
+      <div>
+        <label>Priority:</label>
+        <select value={priority} onChange={(e) => setPriority(e.target.value)}>
+          <option value="Low">Low</option>
+          <option value="Medium">Medium</option>
+          <option value="High">High</option>
+          <option value="Urgent">Urgent</option>
+        </select>
+      </div>
+      
+      <div>
+        <label>Category:</label>
+        <input
+          type="text"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          maxLength={100}
+        />
+      </div>
+      
+      <div>
+        <label>Attachments (Images/Videos):</label>
+        <input
+          type="file"
+          multiple
+          accept="image/*,video/*"
+          onChange={handleFileChange}
+        />
+        <small>
+          Maximum 10 files, 100MB per file. Allowed: Images (JPEG, PNG, GIF, WEBP, BMP, SVG) 
+          and Videos (MP4, WEBM, MOV, AVI, MKV)
+        </small>
+        {files.length > 0 && (
+          <ul>
+            {files.map((file, index) => (
+              <li key={index}>
+                {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      
+      {error && <div style={{ color: 'red' }}>{error}</div>}
+      
+      <button type="submit" disabled={loading}>
+        {loading ? 'Creating...' : 'Create Support Ticket'}
+      </button>
+    </form>
+  );
+};
+
+export default SupportTicketForm;
+```
+
+**Important Notes:**
+1. **Content-Type Header:** When using FormData, do NOT manually set `Content-Type: multipart/form-data`. The browser/axios will automatically set it with the correct boundary parameter.
+2. **File Field Name:** All files must use the field name `attachments` (plural).
+3. **Presigned URLs:** Attachment URLs are presigned S3 URLs valid for 7 days. If you need longer access, you may need to implement a URL refresh mechanism.
+4. **File Validation:** Files are validated on the server. Invalid file types or oversized files will return a 400 error.
+5. **Optional Files:** File uploads are optional. You can create tickets without any attachments.
 
 ---
 
@@ -122,6 +432,16 @@ GET /v1/support-tickets?status=Open&priority=High&page=1&limit=20&sortBy=created
         "email": "john@example.com"
       },
       "assignedTo": null,
+      "attachments": [
+        {
+          "key": "support-tickets/user123/2024-01-15/screenshot.png",
+          "url": "https://s3.amazonaws.com/bucket/support-tickets/...?X-Amz-Algorithm=...",
+          "originalName": "screenshot.png",
+          "size": 245678,
+          "mimeType": "image/png",
+          "uploadedAt": "2024-01-15T10:30:00.000Z"
+        }
+      ],
       "comments": [
         {
           "id": "507f1f77bcf86cd799439014",
@@ -197,6 +517,16 @@ GET /v1/support-tickets/507f1f77bcf86cd799439011
     "email": "support@example.com",
     "role": "admin"
   },
+  "attachments": [
+    {
+      "key": "support-tickets/user123/2024-01-15/screenshot.png",
+      "url": "https://s3.amazonaws.com/bucket/support-tickets/...?X-Amz-Algorithm=...",
+      "originalName": "screenshot.png",
+      "size": 245678,
+      "mimeType": "image/png",
+      "uploadedAt": "2024-01-15T10:30:00.000Z"
+    }
+  ],
   "comments": [
     {
       "id": "507f1f77bcf86cd799439014",
@@ -297,6 +627,7 @@ Authorization: Bearer <token>
   "createdBy": { ... },
   "candidate": { ... },
   "assignedTo": { ... },
+  "attachments": [ ... ],
   "resolvedAt": "2024-01-15T12:00:00.000Z",
   "resolvedBy": {
     "id": "507f1f77bcf86cd799439015",
@@ -358,6 +689,7 @@ Authorization: Bearer <token>
   "category": "Technical",
   "createdBy": { ... },
   "candidate": { ... },
+  "attachments": [ ... ],
   "comments": [
     {
       "id": "507f1f77bcf86cd799439014",

@@ -1,6 +1,7 @@
 import express from 'express';
 import auth from '../../middlewares/auth.js';
 import validate from '../../middlewares/validate.js';
+import { uploadImagesVideos } from '../../middlewares/upload.js';
 import * as supportTicketValidation from '../../validations/supportTicket.validation.js';
 import * as supportTicketController from '../../controllers/supportTicket.controller.js';
 
@@ -8,7 +9,12 @@ const router = express.Router();
 
 router
   .route('/')
-  .post(auth(), validate(supportTicketValidation.createSupportTicket), supportTicketController.create)
+  .post(
+    auth(),
+    uploadImagesVideos('attachments', 10), // Allow up to 10 image/video files
+    validate(supportTicketValidation.createSupportTicket),
+    supportTicketController.create
+  )
   .get(auth(), validate(supportTicketValidation.getSupportTickets), supportTicketController.list);
 
 router

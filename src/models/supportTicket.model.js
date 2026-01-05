@@ -78,6 +78,37 @@ const supportTicketSchema = new mongoose.Schema(
       type: [commentSchema],
       default: [],
     },
+    attachments: {
+      type: [
+        {
+          key: {
+            type: String,
+            required: true,
+          },
+          url: {
+            type: String,
+            required: true,
+          },
+          originalName: {
+            type: String,
+            required: true,
+          },
+          size: {
+            type: Number,
+            required: true,
+          },
+          mimeType: {
+            type: String,
+            required: true,
+          },
+          uploadedAt: {
+            type: Date,
+            default: Date.now,
+          },
+        },
+      ],
+      default: [],
+    },
     resolvedAt: {
       type: Date,
     },

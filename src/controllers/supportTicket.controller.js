@@ -11,7 +11,9 @@ import {
 } from '../services/supportTicket.service.js';
 
 const create = catchAsync(async (req, res) => {
-  const ticket = await createSupportTicket(req.body, req.user.id);
+  // Get uploaded files from multer (req.files for array uploads)
+  const files = req.files || (req.file ? [req.file] : []);
+  const ticket = await createSupportTicket(req.body, req.user.id, files);
   res.status(httpStatus.CREATED).send(ticket);
 });
 
