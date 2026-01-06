@@ -20,7 +20,9 @@ import {
   resendCandidateVerificationEmail,
   addRecruiterNote,
   addRecruiterFeedback,
-  assignRecruiterToCandidate
+  assignRecruiterToCandidate,
+  updateJoiningDate,
+  updateResignDate
 } from '../services/candidate.service.js';
 import { logActivity } from '../services/recruiterActivity.service.js';
 import { sendEmail, sendCandidateProfileShareEmail } from '../services/email.service.js';
@@ -1155,5 +1157,56 @@ const assignRecruiter = catchAsync(async (req, res) => {
 });
 
 export { addNote, addFeedback, assignRecruiter };
+
+/**
+ * Update candidate joining date
+ */
+const updateJoining = catchAsync(async (req, res) => {
+  const { candidateId } = req.params;
+  const { joiningDate } = req.body;
+  
+  const candidate = await updateJoiningDate(candidateId, joiningDate, req.user);
+  
+  res.status(httpStatus.OK).send({
+    success: true,
+    message: 'Joining date updated successfully',
+    data: candidate,
+  });
+});
+
+/**
+ * Update candidate resign date (makes candidate inactive)
+ */
+const updateResign = catchAsync(async (req, res) => {
+  const { candidateId } = req.params;
+  const { resignDate } = req.body;
+  
+  const candidate = await updateResignDate(candidateId, resignDate, req.user);
+  
+  // Determine message based on whether resign date was cleared or set
+  let message = 'Resign date updated successfully.';
+  if (!resignDate) {
+    message = 'Resign date cleared successfully. Candidate is now active.';
+  } else {
+    const resignDateObj = new Date(resignDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    resignDateObj.setHours(0, 0, 0, 0);
+    
+    if (resignDateObj <= today) {
+      message = 'Resign date updated successfully. Candidate is now inactive.';
+    } else {
+      message = `Resign date updated successfully. Candidate will be deactivated on ${resignDateObj.toLocaleDateString()}.`;
+    }
+  }
+  
+  res.status(httpStatus.OK).send({
+    success: true,
+    message,
+    data: candidate,
+  });
+});
+
+export { updateJoining, updateResign };
 
 

@@ -10,11 +10,26 @@ import { uploadMultipleFilesToS3 } from './upload.service.js';
  * @param {Object} ticketData - Ticket data
  * @param {string} userId - User ID who created the ticket
  * @param {Array} files - Array of uploaded files (optional)
+ * @param {Object} user - Current user object (to check role)
  * @returns {Promise<SupportTicket>}
  */
-const createSupportTicket = async (ticketData, userId, files = []) => {
-  // Find candidate associated with the user
-  const candidate = await Candidate.findOne({ owner: userId });
+const createSupportTicket = async (ticketData, userId, files = [], user = null) => {
+  let candidate = null;
+  let candidateId = null;
+
+  // Check if admin is creating ticket on behalf of a candidate
+  if (user && user.role === 'admin' && ticketData.candidateId) {
+    // Admin creating ticket for a specific candidate
+    candidate = await Candidate.findById(ticketData.candidateId);
+    if (!candidate) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'Candidate not found');
+    }
+    candidateId = candidate._id;
+  } else {
+    // Regular user creating ticket - find their candidate profile
+    candidate = await Candidate.findOne({ owner: userId });
+    candidateId = candidate?._id || null;
+  }
   
   // Handle file uploads if any
   let attachments = [];
@@ -35,10 +50,13 @@ const createSupportTicket = async (ticketData, userId, files = []) => {
     }
   }
   
+  // Remove candidateId from ticketData before creating (it's not a field in the model)
+  const { candidateId: _, ...ticketFields } = ticketData;
+  
   const ticket = await SupportTicket.create({
-    ...ticketData,
+    ...ticketFields,
     createdBy: userId,
-    candidate: candidate?._id || null,
+    candidate: candidateId,
     attachments,
   });
 
@@ -63,9 +81,21 @@ const createSupportTicket = async (ticketData, userId, files = []) => {
  * @returns {Promise<Object>}
  */
 const querySupportTickets = async (filter, options, user) => {
-  // If user is not admin, only show their own tickets
+  // If user is not admin, show tickets they created OR tickets created for their candidate profile
   if (user.role !== 'admin') {
-    filter.createdBy = user.id;
+    // Find candidate associated with the user
+    const candidate = await Candidate.findOne({ owner: user.id });
+    
+    if (candidate) {
+      // Show tickets created by user OR tickets created for their candidate profile
+      filter.$or = [
+        { createdBy: user.id },
+        { candidate: candidate._id }
+      ];
+    } else {
+      // No candidate profile, only show tickets created by user
+      filter.createdBy = user.id;
+    }
   }
 
   const result = await SupportTicket.paginate(filter, options);
@@ -142,9 +172,16 @@ const getSupportTicketById = async (ticketId, user) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'Support ticket not found');
   }
 
-  // Check permissions: admin can see all, users can only see their own
-  if (user.role !== 'admin' && String(ticket.createdBy) !== String(user.id)) {
-    throw new ApiError(httpStatus.FORBIDDEN, 'You can only view your own tickets');
+  // Check permissions: admin can see all, users can see tickets they created OR tickets created for their candidate profile
+  if (user.role !== 'admin') {
+    const candidate = await Candidate.findOne({ owner: user.id });
+    const canView = 
+      String(ticket.createdBy) === String(user.id) || 
+      (candidate && String(ticket.candidate) === String(candidate._id));
+    
+    if (!canView) {
+      throw new ApiError(httpStatus.FORBIDDEN, 'You can only view your own tickets');
+    }
   }
 
   // Populate fields
@@ -212,9 +249,16 @@ const updateSupportTicketById = async (ticketId, updateData, user) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'Support ticket not found');
   }
 
-  // Check permissions: admin can see all, users can only see their own
-  if (user.role !== 'admin' && String(ticket.createdBy) !== String(user.id)) {
-    throw new ApiError(httpStatus.FORBIDDEN, 'You can only update your own tickets');
+  // Check permissions: admin can update all, users can update tickets they created OR tickets created for their candidate profile
+  if (user.role !== 'admin') {
+    const candidate = await Candidate.findOne({ owner: user.id });
+    const canUpdate = 
+      String(ticket.createdBy) === String(user.id) || 
+      (candidate && String(ticket.candidate) === String(candidate._id));
+    
+    if (!canUpdate) {
+      throw new ApiError(httpStatus.FORBIDDEN, 'You can only update your own tickets');
+    }
   }
 
   // Only admin can update tickets (except status updates by ticket creator)
@@ -294,9 +338,10 @@ const updateSupportTicketById = async (ticketId, updateData, user) => {
  * @param {string} ticketId - Ticket ID
  * @param {string} content - Comment content
  * @param {Object} user - Current user
+ * @param {Array} files - Array of uploaded files (optional)
  * @returns {Promise<SupportTicket>}
  */
-const addCommentToTicket = async (ticketId, content, user) => {
+const addCommentToTicket = async (ticketId, content, user, files = []) => {
   // Fetch ticket as Mongoose document (not plain object) to use methods
   const ticket = await SupportTicket.findById(ticketId);
 
@@ -304,9 +349,16 @@ const addCommentToTicket = async (ticketId, content, user) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'Support ticket not found');
   }
 
-  // Check permissions: admin can see all, users can only see their own
-  if (user.role !== 'admin' && String(ticket.createdBy) !== String(user.id)) {
-    throw new ApiError(httpStatus.FORBIDDEN, 'You can only comment on your own tickets');
+  // Check permissions: admin can comment on all, users can comment on tickets they created OR tickets created for their candidate profile
+  if (user.role !== 'admin') {
+    const candidate = await Candidate.findOne({ owner: user.id });
+    const canComment = 
+      String(ticket.createdBy) === String(user.id) || 
+      (candidate && String(ticket.candidate) === String(candidate._id));
+    
+    if (!canComment) {
+      throw new ApiError(httpStatus.FORBIDDEN, 'You can only comment on your own tickets');
+    }
   }
 
   // Check if ticket is closed
@@ -314,11 +366,30 @@ const addCommentToTicket = async (ticketId, content, user) => {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Cannot add comment to closed ticket');
   }
 
+  // Handle file uploads if any
+  let attachments = [];
+  if (files && files.length > 0) {
+    try {
+      // Upload files to S3 in the support-tickets/comments folder
+      const uploadResults = await uploadMultipleFilesToS3(files, user.id, 'support-tickets/comments');
+      attachments = uploadResults.map((result) => ({
+        key: result.key,
+        url: result.url,
+        originalName: result.originalName,
+        size: result.size,
+        mimeType: result.mimeType,
+        uploadedAt: new Date(),
+      }));
+    } catch (error) {
+      throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, `Failed to upload attachments: ${error.message}`);
+    }
+  }
+
   // Determine if this is an admin comment
   const isAdminComment = user.role === 'admin';
 
   // Add comment using the document method
-  await ticket.addComment(content, user.id, isAdminComment);
+  await ticket.addComment(content, user.id, isAdminComment, attachments);
 
   // Populate fields
   await ticket.populate([

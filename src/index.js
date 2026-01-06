@@ -5,12 +5,14 @@ import config from './config/config.js';
 import logger from './config/logger.js';
 import { startMeetingScheduler, stopMeetingScheduler } from './services/meeting.scheduler.js';
 import { startAttendanceScheduler, stopAttendanceScheduler } from './services/attendance.scheduler.js';
+import { startCandidateScheduler, stopCandidateScheduler } from './services/candidate.scheduler.js';
 import initializeSocket from './sockets/index.js';
 
 let server;
 let io;
 let meetingSchedulerInterval;
 let attendanceSchedulerInterval;
+let candidateSchedulerInterval;
 mongoose.connect(config.mongoose.url, config.mongoose.options).then(() => {
   logger.info('Connected to MongoDB');
   
@@ -32,6 +34,9 @@ mongoose.connect(config.mongoose.url, config.mongoose.options).then(() => {
   
   // Start attendance scheduler (run every 15 minutes by default)
   attendanceSchedulerInterval = startAttendanceScheduler(config.attendance?.schedulerIntervalMinutes || 15);
+  
+  // Start candidate scheduler (run every 60 minutes by default to check for resign dates)
+  candidateSchedulerInterval = startCandidateScheduler(config.candidate?.schedulerIntervalMinutes || 60);
 });
 
 const exitHandler = () => {
@@ -44,6 +49,9 @@ const exitHandler = () => {
       if (attendanceSchedulerInterval) {
         stopAttendanceScheduler(attendanceSchedulerInterval);
       }
+      if (candidateSchedulerInterval) {
+        stopCandidateScheduler(candidateSchedulerInterval);
+      }
       process.exit(1);
     });
   } else {
@@ -52,6 +60,9 @@ const exitHandler = () => {
     }
     if (attendanceSchedulerInterval) {
       stopAttendanceScheduler(attendanceSchedulerInterval);
+    }
+    if (candidateSchedulerInterval) {
+      stopCandidateScheduler(candidateSchedulerInterval);
     }
     process.exit(1);
   }
@@ -75,5 +86,8 @@ process.on('SIGTERM', () => {
   }
   if (attendanceSchedulerInterval) {
     stopAttendanceScheduler(attendanceSchedulerInterval);
+  }
+  if (candidateSchedulerInterval) {
+    stopCandidateScheduler(candidateSchedulerInterval);
   }
 });

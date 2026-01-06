@@ -6,6 +6,7 @@ import ApiError from '../utils/ApiError.js';
 import { tokenTypes } from '../config/tokens.js';
 import { updateLogoutTime } from './loginLog.service.js';
 import logger from '../config/logger.js';
+import Candidate from '../models/candidate.model.js';
 
 /**
  * Login with username and password
@@ -24,6 +25,35 @@ const loginUserWithEmailAndPassword = async (email, password) => {
   const allowedRolesWithoutVerification = ['supervisor', 'recruiter', 'admin'];
   if (!user.isEmailVerified && !allowedRolesWithoutVerification.includes(user.role)) {
     throw new ApiError(httpStatus.FORBIDDEN, 'Please verify your email before logging in. Check your inbox for the verification link.');
+  }
+  
+  // Check if candidate is active (not resigned) - only for users with role 'user'
+  if (user.role === 'user') {
+    const candidate = await Candidate.findOne({ email: user.email });
+    if (candidate) {
+      // Check if candidate has resign date that is today or in the past
+      if (candidate.resignDate) {
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        const resignDate = new Date(candidate.resignDate);
+        resignDate.setHours(0, 0, 0, 0);
+        
+        // If resign date is today or in the past, candidate is inactive
+        if (resignDate <= now) {
+          throw new ApiError(
+            httpStatus.FORBIDDEN,
+            'Your account has been deactivated. Please contact your administrator for assistance.'
+          );
+        }
+        // If resign date is in the future, candidate can still login
+      } else if (!candidate.isActive) {
+        // If isActive is false for other reasons, block login
+        throw new ApiError(
+          httpStatus.FORBIDDEN,
+          'Your account has been deactivated. Please contact your administrator for assistance.'
+        );
+      }
+    }
   }
   
   return user;

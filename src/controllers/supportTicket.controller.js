@@ -1,6 +1,7 @@
 import httpStatus from 'http-status';
 import pick from '../utils/pick.js';
 import catchAsync from '../utils/catchAsync.js';
+import ApiError from '../utils/ApiError.js';
 import {
   createSupportTicket,
   querySupportTickets,
@@ -13,7 +14,16 @@ import {
 const create = catchAsync(async (req, res) => {
   // Get uploaded files from multer (req.files for array uploads)
   const files = req.files || (req.file ? [req.file] : []);
-  const ticket = await createSupportTicket(req.body, req.user.id, files);
+  
+  // Validate that only admins can specify candidateId
+  if (req.body.candidateId && req.user.role !== 'admin') {
+    throw new ApiError(
+      httpStatus.FORBIDDEN,
+      'Only admins can create tickets on behalf of candidates'
+    );
+  }
+  
+  const ticket = await createSupportTicket(req.body, req.user.id, files, req.user);
   res.status(httpStatus.CREATED).send(ticket);
 });
 
@@ -41,7 +51,9 @@ const remove = catchAsync(async (req, res) => {
 
 const addComment = catchAsync(async (req, res) => {
   const { content } = req.body;
-  const ticket = await addCommentToTicket(req.params.ticketId, content, req.user);
+  // Get uploaded files from multer (req.files for array uploads)
+  const files = req.files || (req.file ? [req.file] : []);
+  const ticket = await addCommentToTicket(req.params.ticketId, content, req.user, files);
   res.status(httpStatus.OK).send(ticket);
 });
 

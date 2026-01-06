@@ -1162,6 +1162,79 @@ const assignRecruiterToCandidate = async (candidateId, recruiterId) => {
   return candidate;
 };
 
+/**
+ * Update candidate joining date
+ * @param {string} candidateId - Candidate ID
+ * @param {Date} joiningDate - Joining date (can be null to clear)
+ * @param {Object} user - Current user
+ * @returns {Promise<Candidate>}
+ */
+const updateJoiningDate = async (candidateId, joiningDate, user) => {
+  const candidate = await Candidate.findById(candidateId);
+  if (!candidate) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Candidate not found');
+  }
+
+  // Check permissions: only admin can update joining date
+  if (user.role !== 'admin') {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Only admin can update joining date');
+  }
+
+  // Validate that joining date is before resign date if both exist
+  if (candidate.resignDate && joiningDate && new Date(joiningDate) > new Date(candidate.resignDate)) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Joining date cannot be after resign date');
+  }
+
+  // Allow clearing joining date (setting to null)
+  candidate.joiningDate = joiningDate ? new Date(joiningDate) : null;
+  await candidate.save();
+
+  // Populate fields
+  await candidate.populate([
+    { path: 'owner', select: 'name email' },
+    { path: 'adminId', select: 'name email' },
+  ]);
+
+  return candidate;
+};
+
+/**
+ * Update candidate resign date (makes candidate inactive)
+ * @param {string} candidateId - Candidate ID
+ * @param {Date} resignDate - Resign date (can be null to clear/reactivate)
+ * @param {Object} user - Current user
+ * @returns {Promise<Candidate>}
+ */
+const updateResignDate = async (candidateId, resignDate, user) => {
+  const candidate = await Candidate.findById(candidateId);
+  if (!candidate) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Candidate not found');
+  }
+
+  // Check permissions: only admin can update resign date
+  if (user.role !== 'admin') {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Only admin can update resign date');
+  }
+
+  // Validate that resign date is after joining date if both exist
+  if (candidate.joiningDate && resignDate && new Date(resignDate) < new Date(candidate.joiningDate)) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Resign date cannot be before joining date');
+  }
+
+  // Allow clearing resign date (setting to null) to reactivate candidate
+  candidate.resignDate = resignDate ? new Date(resignDate) : null;
+  // isActive will be automatically set by pre-save hook based on resignDate
+  await candidate.save();
+
+  // Populate fields
+  await candidate.populate([
+    { path: 'owner', select: 'name email' },
+    { path: 'adminId', select: 'name email' },
+  ]);
+
+  return candidate;
+};
+
 export {
   createCandidate,
   queryCandidates,
@@ -1189,6 +1262,9 @@ export {
   addRecruiterNote,
   addRecruiterFeedback,
   assignRecruiterToCandidate,
+  // Joining and resign dates
+  updateJoiningDate,
+  updateResignDate,
 };
 
 

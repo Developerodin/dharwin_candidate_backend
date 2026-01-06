@@ -21,7 +21,9 @@ Create a new support ticket with optional image/video attachments.
 
 **Endpoint:** `POST /v1/support-tickets`
 
-**Access:** Authenticated users (candidates)
+**Access:** 
+- **Candidates:** Can create tickets for themselves
+- **Admins:** Can create tickets on behalf of any candidate
 
 **Content-Type:** `multipart/form-data` (when uploading files) or `application/json` (without files)
 
@@ -31,9 +33,15 @@ Create a new support ticket with optional image/video attachments.
   "title": "Issue with profile upload",
   "description": "I'm unable to upload my profile picture. The upload button is not working.",
   "priority": "Medium",  // Optional: "Low" | "Medium" | "High" | "Urgent" (default: "Medium")
-  "category": "Technical"  // Optional: Any string (default: "General")
+  "category": "Technical",  // Optional: Any string (default: "General")
+  "candidateId": "507f1f77bcf86cd799439011"  // Optional: Admin only - Create ticket on behalf of this candidate
 }
 ```
+
+**Note for Admins:** 
+- Include `candidateId` in the request body to create a ticket on behalf of a specific candidate
+- If `candidateId` is not provided, the ticket will be created for the admin's own account (if they have a candidate profile)
+- Only admins can use the `candidateId` field
 
 **Request Body (FormData - with files):**
 ```
@@ -44,6 +52,7 @@ Fields:
 - description: "I'm unable to upload my profile picture..." (required)
 - priority: "Medium" (optional)
 - category: "Technical" (optional)
+- candidateId: "507f1f77bcf86cd799439011" (optional, admin only - Create ticket on behalf of this candidate)
 - attachments: [File] (optional, can be multiple)
 ```
 
@@ -208,6 +217,11 @@ const createSupportTicketWithFiles = async (ticketData, files) => {
     formData.append('category', ticketData.category);
   }
   
+  // Admin can specify candidateId to create ticket on behalf of candidate
+  if (ticketData.candidateId) {
+    formData.append('candidateId', ticketData.candidateId);
+  }
+  
   // Add files
   if (files && files.length > 0) {
     files.forEach((file) => {
@@ -225,7 +239,7 @@ const createSupportTicketWithFiles = async (ticketData, files) => {
   return response.data;
 };
 
-// Usage
+// Usage - Regular candidate creating ticket
 const files = document.getElementById('fileInput').files;
 const ticket = await createSupportTicketWithFiles(
   {
@@ -233,6 +247,18 @@ const ticket = await createSupportTicketWithFiles(
     description: 'The application crashes when clicking this button.',
     priority: 'High',
     category: 'Technical'
+  },
+  Array.from(files)
+);
+
+// Usage - Admin creating ticket on behalf of candidate
+const adminTicket = await createSupportTicketWithFiles(
+  {
+    title: 'Profile Issue',
+    description: 'Candidate reported issue with profile picture upload.',
+    priority: 'High',
+    category: 'Technical',
+    candidateId: '507f1f77bcf86cd799439011'  // Admin only
   },
   Array.from(files)
 );
@@ -248,9 +274,11 @@ const SupportTicketForm = () => {
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState('Medium');
   const [category, setCategory] = useState('General');
+  const [candidateId, setCandidateId] = useState(''); // Admin only
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const userRole = localStorage.getItem('userRole') || 'user'; // Get user role from your auth system
 
   const handleFileChange = (e) => {
     setFiles(Array.from(e.target.files));
@@ -267,6 +295,11 @@ const SupportTicketForm = () => {
       formData.append('description', description);
       formData.append('priority', priority);
       formData.append('category', category);
+      
+      // Admin can add candidateId to create ticket on behalf of candidate
+      if (userRole === 'admin' && candidateId) {
+        formData.append('candidateId', candidateId);
+      }
       
       // Add all selected files
       files.forEach((file) => {
@@ -338,6 +371,20 @@ const SupportTicketForm = () => {
           maxLength={100}
         />
       </div>
+      
+      {/* Admin only - Create ticket on behalf of candidate */}
+      {userRole === 'admin' && (
+        <div>
+          <label>Create on behalf of Candidate (Optional):</label>
+          <input
+            type="text"
+            placeholder="Candidate ID"
+            value={candidateId || ''}
+            onChange={(e) => setCandidateId(e.target.value)}
+          />
+          <small>Leave empty to create ticket for yourself</small>
+        </div>
+      )}
       
       <div>
         <label>Attachments (Images/Videos):</label>
@@ -646,7 +693,7 @@ Authorization: Bearer <token>
 
 ### 5. Add Comment to Ticket
 
-Add a comment to a support ticket.
+Add a comment to a support ticket with optional image/video attachments.
 
 **Endpoint:** `POST /v1/support-tickets/:ticketId/comments`
 
@@ -654,17 +701,35 @@ Add a comment to a support ticket.
 - **Candidates:** Can comment on their own tickets
 - **Admins:** Can comment on any ticket
 
+**Content-Type:** `multipart/form-data` (when uploading files) or `application/json` (without files)
+
 **URL Parameters:**
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `ticketId` | string | MongoDB ObjectId of the ticket |
 
-**Request Body:**
+**Request Body (JSON - without files):**
 ```json
 {
   "content": "We're looking into this issue. Can you try clearing your browser cache?"
 }
 ```
+
+**Request Body (FormData - with files):**
+```
+Content-Type: multipart/form-data
+
+Fields:
+- content: "We're looking into this issue..." (required)
+- attachments: [File] (optional, can be multiple)
+```
+
+**File Upload Requirements:**
+- **Field Name:** `attachments` (use the same field name for all files)
+- **Maximum Files:** 10 files per comment
+- **File Size Limit:** 100MB per file
+- **Allowed Image Types:** JPEG, JPG, PNG, GIF, WEBP, BMP, SVG
+- **Allowed Video Types:** MP4, WEBM, MOV, AVI, MKV
 
 **Example Request:**
 ```
@@ -701,6 +766,16 @@ Authorization: Bearer <token>
         "role": "admin"
       },
       "isAdminComment": true,
+      "attachments": [
+        {
+          "key": "support-tickets/comments/user123/2024-01-15/screenshot.png",
+          "url": "https://s3.amazonaws.com/bucket/support-tickets/comments/...?X-Amz-Algorithm=...",
+          "originalName": "screenshot.png",
+          "size": 245678,
+          "mimeType": "image/png",
+          "uploadedAt": "2024-01-15T11:00:00.000Z"
+        }
+      ],
       "createdAt": "2024-01-15T11:00:00.000Z",
       "updatedAt": "2024-01-15T11:00:00.000Z"
     }
@@ -712,11 +787,213 @@ Authorization: Bearer <token>
 
 **Validation Rules:**
 - `content`: Required, 5-2000 characters
+- `attachments`: Optional, up to 10 files, 100MB per file
 
 **Error Responses:**
-- `400 Bad Request`: Cannot add comment to closed ticket
-- `404 Not Found`: Ticket not found
-- `403 Forbidden`: User trying to comment on another user's ticket
+
+**400 Bad Request - Closed Ticket:**
+```json
+{
+  "code": 400,
+  "message": "Cannot add comment to closed ticket"
+}
+```
+
+**400 Bad Request - Invalid File Type:**
+```json
+{
+  "code": 400,
+  "message": "File type application/pdf is not allowed. Allowed types: Images (JPEG, PNG, GIF, WEBP, BMP, SVG) and Videos (MP4, WEBM, MOV, AVI, MKV)"
+}
+```
+
+**403 Forbidden:**
+```json
+{
+  "code": 403,
+  "message": "You can only comment on your own tickets"
+}
+```
+
+**404 Not Found:**
+```json
+{
+  "code": 404,
+  "message": "Support ticket not found"
+}
+```
+
+**Frontend Implementation Examples:**
+
+**Using Fetch API:**
+```javascript
+const addCommentWithFiles = async (ticketId, content, files) => {
+  const formData = new FormData();
+  formData.append('content', content);
+  
+  // Add files if any
+  if (files && files.length > 0) {
+    files.forEach((file) => {
+      formData.append('attachments', file);
+    });
+  }
+  
+  const response = await fetch(`/v1/support-tickets/${ticketId}/comments`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`
+    },
+    body: formData
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message);
+  }
+  
+  return await response.json();
+};
+
+// Usage
+const files = document.getElementById('commentFileInput').files;
+await addCommentWithFiles(
+  '507f1f77bcf86cd799439011',
+  'Here are the screenshots showing the issue.',
+  Array.from(files)
+);
+```
+
+**Using Axios:**
+```javascript
+import axios from 'axios';
+
+const addCommentWithFiles = async (ticketId, content, files) => {
+  const formData = new FormData();
+  formData.append('content', content);
+  
+  // Add files if any
+  if (files && files.length > 0) {
+    files.forEach((file) => {
+      formData.append('attachments', file);
+    });
+  }
+  
+  const response = await axios.post(
+    `/v1/support-tickets/${ticketId}/comments`,
+    formData,
+    {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'multipart/form-data'
+      }
+    }
+  );
+  
+  return response.data;
+};
+```
+
+**React Component Example:**
+```jsx
+import React, { useState } from 'react';
+import axios from 'axios';
+
+const CommentForm = ({ ticketId, onCommentAdded }) => {
+  const [content, setContent] = useState('');
+  const [files, setFiles] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleFileChange = (e) => {
+    setFiles(Array.from(e.target.files));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('content', content);
+      
+      // Add files
+      files.forEach((file) => {
+        formData.append('attachments', file);
+      });
+
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `/v1/support-tickets/${ticketId}/comments`,
+        formData,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
+
+      setContent('');
+      setFiles([]);
+      if (onCommentAdded) {
+        onCommentAdded(response.data);
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to add comment');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div>
+        <label>Comment:</label>
+        <textarea
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          required
+          minLength={5}
+          maxLength={2000}
+          rows={4}
+        />
+      </div>
+      
+      <div>
+        <label>Attachments (Images/Videos):</label>
+        <input
+          type="file"
+          multiple
+          accept="image/*,video/*"
+          onChange={handleFileChange}
+        />
+        <small>
+          Maximum 10 files, 100MB per file. Allowed: Images (JPEG, PNG, GIF, WEBP, BMP, SVG) 
+          and Videos (MP4, WEBM, MOV, AVI, MKV)
+        </small>
+        {files.length > 0 && (
+          <ul>
+            {files.map((file, index) => (
+              <li key={index}>
+                {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      
+      {error && <div style={{ color: 'red' }}>{error}</div>}
+      
+      <button type="submit" disabled={loading || !content.trim()}>
+        {loading ? 'Adding Comment...' : 'Add Comment'}
+      </button>
+    </form>
+  );
+};
+
+export default CommentForm;
+```
 
 ---
 

@@ -19,6 +19,37 @@ const commentSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    attachments: {
+      type: [
+        {
+          key: {
+            type: String,
+            required: true,
+          },
+          url: {
+            type: String,
+            required: true,
+          },
+          originalName: {
+            type: String,
+            required: true,
+          },
+          size: {
+            type: Number,
+            required: true,
+          },
+          mimeType: {
+            type: String,
+            required: true,
+          },
+          uploadedAt: {
+            type: Date,
+            default: Date.now,
+          },
+        },
+      ],
+      default: [],
+    },
   },
   { timestamps: true }
 );
@@ -146,11 +177,12 @@ supportTicketSchema.pre('save', async function (next) {
 });
 
 // Method to add comment
-supportTicketSchema.methods.addComment = function (content, userId, isAdmin = false) {
+supportTicketSchema.methods.addComment = function (content, userId, isAdmin = false, attachments = []) {
   this.comments.push({
     content,
     commentedBy: userId,
     isAdminComment: isAdmin,
+    attachments,
   });
   return this.save();
 };

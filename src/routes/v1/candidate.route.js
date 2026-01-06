@@ -48,6 +48,15 @@ router
   .route('/:candidateId/assign-recruiter')
   .post(auth('manageCandidates'), validate(candidateValidation.assignRecruiter), candidateController.assignRecruiter);
 
+// Joining date and resign date routes - MUST come before /:candidateId route
+router
+  .route('/:candidateId/joining-date')
+  .patch(auth('manageCandidates'), validate(candidateValidation.updateJoiningDate), candidateController.updateJoining);
+
+router
+  .route('/:candidateId/resign-date')
+  .patch(auth('manageCandidates'), validate(candidateValidation.updateResignDate), candidateController.updateResign);
+
 router
   .route('/:candidateId')
   .get(auth(), validate(candidateValidation.getCandidate), candidateController.get)

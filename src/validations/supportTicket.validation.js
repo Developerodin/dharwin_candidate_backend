@@ -15,6 +15,9 @@ const createSupportTicket = {
     }),
     priority: Joi.string().valid('Low', 'Medium', 'High', 'Urgent').default('Medium'),
     category: Joi.string().trim().max(100).default('General'),
+    candidateId: Joi.string().custom(objectId).optional().messages({
+      'string.base': 'Candidate ID must be a valid MongoDB ObjectId',
+    }),
   }).required(),
 };
 

@@ -25,7 +25,12 @@ router
 
 router
   .route('/:ticketId/comments')
-  .post(auth(), validate(supportTicketValidation.addComment), supportTicketController.addComment);
+  .post(
+    auth(),
+    uploadImagesVideos('attachments', 10), // Allow up to 10 image/video files
+    validate(supportTicketValidation.addComment),
+    supportTicketController.addComment
+  );
 
 export default router;
 

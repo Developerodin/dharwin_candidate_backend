@@ -418,6 +418,29 @@ const assignRecruiter = {
   }),
 };
 
-export { addRecruiterNote, addRecruiterFeedback, assignRecruiter };
+const updateJoiningDate = {
+  params: Joi.object().keys({
+    candidateId: Joi.string().custom(objectId).required(),
+  }),
+  body: Joi.object().keys({
+    joiningDate: Joi.date().required().messages({
+      'any.required': 'Joining date is required',
+      'date.base': 'Joining date must be a valid date',
+    }),
+  }),
+};
+
+const updateResignDate = {
+  params: Joi.object().keys({
+    candidateId: Joi.string().custom(objectId).required(),
+  }),
+  body: Joi.object().keys({
+    resignDate: Joi.date().allow(null).optional().messages({
+      'date.base': 'Resign date must be a valid date',
+    }),
+  }),
+};
+
+export { addRecruiterNote, addRecruiterFeedback, assignRecruiter, updateJoiningDate, updateResignDate };
 
 

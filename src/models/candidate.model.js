@@ -144,9 +144,46 @@ const candidateSchema = new mongoose.Schema(
       ref: 'User',
       index: true,
     },
+    joiningDate: {
+      type: Date,
+      index: true,
+    },
+    resignDate: {
+      type: Date,
+      index: true,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
   },
   { timestamps: true }
 );
+
+// Pre-save hook to update isActive based on resignDate
+candidateSchema.pre('save', function (next) {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0); // Normalize to start of day for comparison
+  
+  if (this.resignDate) {
+    const resignDate = new Date(this.resignDate);
+    resignDate.setHours(0, 0, 0, 0); // Normalize to start of day
+    
+    // Candidate is inactive only if resign date is today or in the past
+    // If resign date is in the future, candidate remains active
+    if (resignDate <= now) {
+      this.isActive = false;
+    } else {
+      // Future resign date - candidate remains active
+      this.isActive = true;
+    }
+  } else if (this.isModified('resignDate') && !this.resignDate) {
+    // If resignDate is removed, candidate becomes active again
+    this.isActive = true;
+  }
+  next();
+});
 
 candidateSchema.plugin(toJSON);
 candidateSchema.plugin(paginate);
