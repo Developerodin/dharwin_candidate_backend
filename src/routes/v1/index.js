@@ -12,6 +12,7 @@ import dashboardRoute from './dashboard.route.js';
 import jobRoute from './job.route.js';
 import recruiterActivityRoute from './recruiterActivity.route.js';
 import supportTicketRoute from './supportTicket.route.js';
+import holidayRoute from './holiday.route.js';
 import docsRoute from './docs.route.js';
 import config from '../../config/config.js';
 
@@ -69,6 +70,10 @@ const defaultRoutes = [
   {
     path: '/support-tickets',
     route: supportTicketRoute,
+  },
+  {
+    path: '/holidays',
+    route: holidayRoute,
   },
 ];
 

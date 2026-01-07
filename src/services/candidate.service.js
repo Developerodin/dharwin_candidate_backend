@@ -1235,6 +1235,70 @@ const updateResignDate = async (candidateId, resignDate, user) => {
   return candidate;
 };
 
+/**
+ * Update week-off days for multiple candidates
+ * @param {Array<string>} candidateIds - Array of candidate IDs
+ * @param {Array<string>} weekOff - Array of week-off days (e.g., ['Saturday', 'Sunday'])
+ * @param {Object} user - Current user
+ * @returns {Promise<Object>} Object with updated candidates and summary
+ */
+const updateWeekOffForCandidates = async (candidateIds, weekOff, user) => {
+  // Check permissions: only admin can update week-off
+  if (user.role !== 'admin') {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Only admin can update week-off calendar');
+  }
+
+  // Validate candidate IDs
+  const candidates = await Candidate.find({ _id: { $in: candidateIds } });
+  if (candidates.length !== candidateIds.length) {
+    const foundIds = candidates.map((c) => String(c._id));
+    const missingIds = candidateIds.filter((id) => !foundIds.includes(String(id)));
+    throw new ApiError(httpStatus.NOT_FOUND, `Some candidates not found: ${missingIds.join(', ')}`);
+  }
+
+  // Update week-off for all candidates
+  const updateResult = await Candidate.updateMany(
+    { _id: { $in: candidateIds } },
+    { $set: { weekOff } }
+  );
+
+  // Fetch updated candidates
+  const updatedCandidates = await Candidate.find({ _id: { $in: candidateIds } })
+    .populate('owner', 'name email')
+    .populate('adminId', 'name email');
+
+  return {
+    success: true,
+    message: `Week-off calendar updated for ${updateResult.modifiedCount} candidate(s)`,
+    data: {
+      updatedCount: updateResult.modifiedCount,
+      candidates: updatedCandidates,
+    },
+  };
+};
+
+/**
+ * Get week-off days for a candidate
+ * @param {string} candidateId - Candidate ID
+ * @returns {Promise<Object>} Candidate week-off information
+ */
+const getCandidateWeekOff = async (candidateId) => {
+  const candidate = await Candidate.findById(candidateId)
+    .select('weekOff fullName email')
+    .populate('owner', 'name email');
+
+  if (!candidate) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Candidate not found');
+  }
+
+  return {
+    candidateId: candidate._id,
+    candidateName: candidate.fullName,
+    candidateEmail: candidate.email,
+    weekOff: candidate.weekOff || [],
+  };
+};
+
 export {
   createCandidate,
   queryCandidates,
@@ -1265,6 +1329,9 @@ export {
   // Joining and resign dates
   updateJoiningDate,
   updateResignDate,
+  // Week-off calendar
+  updateWeekOffForCandidates,
+  getCandidateWeekOff,
 };
 
 

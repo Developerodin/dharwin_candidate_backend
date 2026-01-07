@@ -44,7 +44,7 @@ const envVarsSchema = Joi.object()
     OPENAI_API_KEY: Joi.string().description('OpenAI API key'),
     TRANSCRIPTION_LANGUAGE: Joi.string().default('en').description('Default transcription language'),
     TRANSCRIPTION_AUTO_START: Joi.boolean().default(true).description('Auto-start transcription after recording upload'),
-    ATTENDANCE_AUTO_PUNCH_OUT_DURATION_HOURS: Joi.number().default(9).description('Auto punch-out duration in hours (default: 9)'),
+    ATTENDANCE_AUTO_PUNCH_OUT_DURATION_HOURS: Joi.number().default(12).description('Auto punch-out duration in hours (default: 12)'),
     ATTENDANCE_SCHEDULER_INTERVAL_MINUTES: Joi.number().default(15).description('Attendance scheduler interval in minutes (default: 15)'),
     TZ: Joi.string().optional().description('Server timezone (e.g., America/New_York, UTC). If not set, uses server default.'),
   })

@@ -6824,6 +6824,11 @@ performance-now@^2.1.0:
   resolved "https://registry.npmjs.org/performance-now/-/performance-now-2.1.0.tgz"
   integrity sha1-Ywn04OX6kT7BxpMHrjZLSzd8nns=
 
+pick@^0.0.1:
+  version "0.0.1"
+  resolved "https://registry.npmjs.org/pick/-/pick-0.0.1.tgz"
+  integrity sha512-5ECPthC3qMRgKT84MO5TtzWFZ906JpmP3d9UjyU8gRgnNQfWV0q+tXt8MGMo3WDb2dVgMfbRolktf89gr06DHQ==
+
 picomatch@^2.0.4, picomatch@^2.2.1, picomatch@^2.2.3:
   version "2.3.0"
   resolved "https://registry.npmjs.org/picomatch/-/picomatch-2.3.0.tgz"

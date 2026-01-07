@@ -22,7 +22,9 @@ import {
   addRecruiterFeedback,
   assignRecruiterToCandidate,
   updateJoiningDate,
-  updateResignDate
+  updateResignDate,
+  updateWeekOffForCandidates,
+  getCandidateWeekOff
 } from '../services/candidate.service.js';
 import { logActivity } from '../services/recruiterActivity.service.js';
 import { sendEmail, sendCandidateProfileShareEmail } from '../services/email.service.js';
@@ -1207,6 +1209,31 @@ const updateResign = catchAsync(async (req, res) => {
   });
 });
 
-export { updateJoining, updateResign };
+/**
+ * Update week-off calendar for multiple candidates
+ */
+const updateWeekOff = catchAsync(async (req, res) => {
+  const { candidateIds, weekOff } = req.body;
+  
+  const result = await updateWeekOffForCandidates(candidateIds, weekOff, req.user);
+  
+  res.status(httpStatus.OK).send(result);
+});
+
+/**
+ * Get week-off calendar for a candidate
+ */
+const getWeekOff = catchAsync(async (req, res) => {
+  const { candidateId } = req.params;
+  
+  const result = await getCandidateWeekOff(candidateId);
+  
+  res.status(httpStatus.OK).send({
+    success: true,
+    data: result,
+  });
+});
+
+export { updateJoining, updateResign, updateWeekOff, getWeekOff };
 
 

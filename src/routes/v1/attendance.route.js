@@ -36,6 +36,11 @@ router
   .route('/')
   .get(auth(), validate(attendanceValidation.getAllAttendance), attendanceController.getAll);
 
+// Add holidays to candidate calendar attendance (admin only)
+router
+  .route('/holidays')
+  .post(auth('manageCandidates'), validate(attendanceValidation.addHolidaysToCandidates), attendanceController.addHolidays);
+
 // Get attendance by ID
 router
   .route('/:attendanceId')

@@ -61,6 +61,12 @@ const attendanceSchema = mongoose.Schema(
       default: 'UTC',
       // Common timezones: 'America/New_York', 'America/Los_Angeles', 'Asia/Kolkata', 'UTC'
     },
+    status: {
+      type: String,
+      enum: ['Present', 'Absent', 'Holiday', 'Leave'],
+      default: 'Present',
+      index: true,
+    },
   },
   {
     timestamps: true,

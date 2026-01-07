@@ -48,6 +48,15 @@ router
   .route('/:candidateId/assign-recruiter')
   .post(auth('manageCandidates'), validate(candidateValidation.assignRecruiter), candidateController.assignRecruiter);
 
+// Week-off calendar routes - MUST come before /:candidateId route
+router
+  .route('/week-off')
+  .post(auth('manageCandidates'), validate(candidateValidation.updateWeekOff), candidateController.updateWeekOff);
+
+router
+  .route('/:candidateId/week-off')
+  .get(auth(), validate(candidateValidation.getWeekOff), candidateController.getWeekOff);
+
 // Joining date and resign date routes - MUST come before /:candidateId route
 router
   .route('/:candidateId/joining-date')

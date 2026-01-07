@@ -11,7 +11,7 @@ import { hasExceededDurationInTimezone } from '../utils/timezone.js';
 const autoPunchOutExpired = async () => {
   try {
     const now = new Date();
-    const autoPunchOutDurationHours = config.attendance?.autoPunchOutDurationHours || 9;
+    const autoPunchOutDurationHours = config.attendance?.autoPunchOutDurationHours || 12;
 
     // Find all active punch-ins (no punch out)
     const activePunchIns = await Attendance.find({
@@ -87,7 +87,7 @@ const startAttendanceScheduler = (intervalMinutes = 15) => {
   // Then run at specified intervals
   const id = setInterval(run, intervalMs);
   logger.info(
-    `Attendance scheduler started (every ${intervalMinutes} min, auto punch-out after ${config.attendance?.autoPunchOutDurationHours || 9} hours)`
+    `Attendance scheduler started (every ${intervalMinutes} min, auto punch-out after ${config.attendance?.autoPunchOutDurationHours || 12} hours)`
   );
   return id;
 };

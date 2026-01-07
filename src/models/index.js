@@ -11,6 +11,7 @@ import TaskComment from './taskComment.model.js';
 import Job from './job.model.js';
 import JobTemplate from './jobTemplate.model.js';
 import RecruiterActivityLog from './recruiterActivityLog.model.js';
+import Holiday from './holiday.model.js';
 
-export { Token, User, Candidate, Meeting, LoginLog, Attendance, ChatMessage, Project, Task, TaskComment, Job, JobTemplate, RecruiterActivityLog };
+export { Token, User, Candidate, Meeting, LoginLog, Attendance, ChatMessage, Project, Task, TaskComment, Job, JobTemplate, RecruiterActivityLog, Holiday };
 

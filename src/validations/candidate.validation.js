@@ -441,6 +441,29 @@ const updateResignDate = {
   }),
 };
 
-export { addRecruiterNote, addRecruiterFeedback, assignRecruiter, updateJoiningDate, updateResignDate };
+const updateWeekOff = {
+  body: Joi.object().keys({
+    candidateIds: Joi.array().items(Joi.string().custom(objectId)).min(1).required().messages({
+      'array.min': 'At least one candidate ID is required',
+      'any.required': 'Candidate IDs are required',
+    }),
+    weekOff: Joi.array()
+      .items(Joi.string().valid('Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'))
+      .unique()
+      .required()
+      .messages({
+        'any.required': 'Week-off days are required',
+        'array.unique': 'Week-off days must be unique',
+      }),
+  }),
+};
+
+const getWeekOff = {
+  params: Joi.object().keys({
+    candidateId: Joi.string().custom(objectId).required(),
+  }),
+};
+
+export { addRecruiterNote, addRecruiterFeedback, assignRecruiter, updateJoiningDate, updateResignDate, updateWeekOff, getWeekOff };
 
 

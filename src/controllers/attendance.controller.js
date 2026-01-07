@@ -11,6 +11,7 @@ import {
   getCurrentPunchStatus,
   getAttendanceStatistics,
   getAllAttendance,
+  addHolidaysToCandidates,
 } from '../services/attendance.service.js';
 import { getCandidateById } from '../services/candidate.service.js';
 
@@ -201,6 +202,17 @@ const getStatistics = catchAsync(async (req, res) => {
   });
 });
 
+/**
+ * Add holidays to candidate calendar attendance
+ */
+const addHolidays = catchAsync(async (req, res) => {
+  const { candidateIds, holidayIds } = req.body;
+
+  const result = await addHolidaysToCandidates(candidateIds, holidayIds, req.user);
+
+  res.status(httpStatus.OK).send(result);
+});
+
 export {
   createPunchIn,
   createPunchOut,
@@ -209,5 +221,6 @@ export {
   getAll,
   get,
   getStatistics,
+  addHolidays,
 };
 

@@ -157,6 +157,22 @@ const candidateSchema = new mongoose.Schema(
       default: true,
       index: true,
     },
+    weekOff: {
+      type: [String],
+      enum: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+      default: [],
+      index: true,
+    },
+    holidays: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Holiday',
+        },
+      ],
+      default: [],
+      index: true,
+    },
   },
   { timestamps: true }
 );

@@ -2,6 +2,7 @@ import httpStatus from 'http-status';
 import ApiError from '../utils/ApiError.js';
 import Attendance from '../models/attendance.model.js';
 import Candidate from '../models/candidate.model.js';
+import Holiday from '../models/holiday.model.js';
 import pick from '../utils/pick.js';
 
 /**
@@ -22,26 +23,34 @@ const punchIn = async (candidateId, punchInTime = new Date(), notes, timezone = 
   // Get today's date (normalized to start of day)
   const today = new Date(punchInTime);
   today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
 
-  // Check if there's already an active punch in for today (no punch out)
+  // Check if there's already an attendance record for today (prevent multiple punch-in/out cycles)
   const existingAttendance = await Attendance.findOne({
     candidate: candidateId,
     date: {
       $gte: today,
-      $lt: new Date(today.getTime() + 24 * 60 * 60 * 1000),
+      $lt: tomorrow,
     },
-    punchOut: null,
-    isActive: true,
   });
 
   if (existingAttendance) {
+    // If already punched out, cannot punch in again today
+    if (existingAttendance.punchOut) {
+      throw new ApiError(
+        httpStatus.BAD_REQUEST,
+        'You have already completed punch-in and punch-out for today. Only one punch-in/punch-out cycle is allowed per day.'
+      );
+    }
+    // If already punched in but not punched out
     throw new ApiError(
       httpStatus.BAD_REQUEST,
       'You are already punched in. Please punch out first.'
     );
   }
 
-  // Create new attendance record with timezone
+  // Create new attendance record with timezone and Present status
   const attendance = await Attendance.create({
     candidate: candidateId,
     candidateEmail: candidate.email,
@@ -49,6 +58,7 @@ const punchIn = async (candidateId, punchInTime = new Date(), notes, timezone = 
     punchIn: punchInTime,
     notes,
     timezone: timezone || 'UTC',
+    status: 'Present',
   });
 
   return attendance.populate('candidate', 'fullName email');
@@ -66,19 +76,38 @@ const punchOut = async (candidateId, punchOutTime = new Date(), notes, timezone)
   // Get today's date (normalized to start of day)
   const today = new Date(punchOutTime);
   today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
 
-  // Find active punch in for today
+  // Find active punch in for today (not yet punched out)
   const attendance = await Attendance.findOne({
     candidate: candidateId,
     date: {
       $gte: today,
-      $lt: new Date(today.getTime() + 24 * 60 * 60 * 1000),
+      $lt: tomorrow,
     },
     punchOut: null,
     isActive: true,
   });
 
   if (!attendance) {
+    // Check if they already punched out today
+    const alreadyPunchedOut = await Attendance.findOne({
+      candidate: candidateId,
+      date: {
+        $gte: today,
+        $lt: tomorrow,
+      },
+      punchOut: { $ne: null },
+    });
+
+    if (alreadyPunchedOut) {
+      throw new ApiError(
+        httpStatus.BAD_REQUEST,
+        'You have already punched out for today. Only one punch-in/punch-out cycle is allowed per day.'
+      );
+    }
+
     throw new ApiError(
       httpStatus.BAD_REQUEST,
       'No active punch in found. Please punch in first.'
@@ -96,6 +125,8 @@ const punchOut = async (candidateId, punchOutTime = new Date(), notes, timezone)
   // Update attendance with punch out
   attendance.punchOut = punchOutTime;
   attendance.duration = punchOutTime.getTime() - attendance.punchIn.getTime();
+  // Keep status as Present since they punched in
+  attendance.status = 'Present';
   if (notes) {
     attendance.notes = notes;
   }
@@ -176,12 +207,14 @@ const getAttendanceByCandidateId = async (candidateId, options = {}) => {
 const getCurrentPunchStatus = async (candidateId) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
 
   const attendance = await Attendance.findOne({
     candidate: candidateId,
     date: {
       $gte: today,
-      $lt: new Date(today.getTime() + 24 * 60 * 60 * 1000),
+      $lt: tomorrow,
     },
     punchOut: null,
     isActive: true,
@@ -287,6 +320,113 @@ const getAllAttendance = async (filter = {}, options = {}) => {
   return queryAttendance(filter, queryOptions);
 };
 
+/**
+ * Add holidays to candidate calendar attendance
+ * Admin can add multiple holidays to multiple candidates at once
+ * @param {Array<string>} candidateIds - Array of candidate IDs
+ * @param {Array<string>} holidayIds - Array of holiday IDs
+ * @param {Object} user - Current user
+ * @returns {Promise<Object>}
+ */
+const addHolidaysToCandidates = async (candidateIds, holidayIds, user) => {
+  // Check permissions: only admin can add holidays
+  if (user.role !== 'admin') {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Only admin can add holidays to candidate calendar');
+  }
+
+  // Validate candidate IDs
+  const candidates = await Candidate.find({ _id: { $in: candidateIds } });
+  if (candidates.length !== candidateIds.length) {
+    const foundIds = candidates.map((c) => String(c._id));
+    const missingIds = candidateIds.filter((id) => !foundIds.includes(String(id)));
+    throw new ApiError(httpStatus.NOT_FOUND, `Some candidates not found: ${missingIds.join(', ')}`);
+  }
+
+  // Validate holiday IDs
+  const holidays = await Holiday.find({ _id: { $in: holidayIds }, isActive: true });
+  if (holidays.length !== holidayIds.length) {
+    const foundIds = holidays.map((h) => String(h._id));
+    const missingIds = holidayIds.filter((id) => !foundIds.includes(String(id)));
+    throw new ApiError(httpStatus.NOT_FOUND, `Some holidays not found or inactive: ${missingIds.join(', ')}`);
+  }
+
+  const createdRecords = [];
+  const skipped = [];
+  const candidateMap = new Map(candidates.map((c) => [String(c._id), c]));
+
+  // Process each candidate
+  for (const candidateId of candidateIds) {
+    const candidate = candidateMap.get(String(candidateId));
+    if (!candidate) continue;
+
+    // Get current holidays array (convert to string array for comparison)
+    const currentHolidayIds = (candidate.holidays || []).map((h) => String(h));
+    const newHolidayIds = holidayIds.filter((id) => !currentHolidayIds.includes(String(id)));
+
+    // Add new holidays to candidate's holidays array
+    if (newHolidayIds.length > 0) {
+      candidate.holidays = [...(candidate.holidays || []), ...newHolidayIds];
+      await candidate.save();
+    }
+
+    // Create attendance records for each holiday date
+    for (const holiday of holidays) {
+      const normalizedDate = new Date(holiday.date);
+      normalizedDate.setHours(0, 0, 0, 0);
+      const nextDay = new Date(normalizedDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+
+      // Check if attendance already exists for this candidate & date
+      const existingAttendance = await Attendance.findOne({
+        candidate: candidateId,
+        date: {
+          $gte: normalizedDate,
+          $lt: nextDay,
+        },
+      });
+
+      if (existingAttendance) {
+        skipped.push({
+          candidateId,
+          candidateName: candidate.fullName,
+          holidayId: holiday._id,
+          holidayTitle: holiday.title,
+          date: normalizedDate.toISOString(),
+          reason: 'Attendance already exists for this date',
+        });
+        continue;
+      }
+
+      // Create attendance record for holiday
+      const attendance = await Attendance.create({
+        candidate: candidateId,
+        candidateEmail: candidate.email,
+        date: normalizedDate,
+        punchIn: normalizedDate,
+        punchOut: null,
+        duration: 0,
+        notes: `Holiday: ${holiday.title}`,
+        timezone: 'UTC',
+        status: 'Holiday',
+      });
+
+      createdRecords.push(await attendance.populate('candidate', 'fullName email'));
+    }
+  }
+
+  return {
+    success: true,
+    message: `Holidays added to ${candidates.length} candidate(s). Created ${createdRecords.length} attendance record(s).`,
+    data: {
+      candidatesUpdated: candidates.length,
+      holidaysAdded: holidayIds.length,
+      attendanceRecordsCreated: createdRecords.length,
+      createdRecords,
+      skipped: skipped.length > 0 ? skipped : undefined,
+    },
+  };
+};
+
 export {
   punchIn,
   punchOut,
@@ -296,5 +436,6 @@ export {
   getCurrentPunchStatus,
   getAttendanceStatistics,
   getAllAttendance,
+  addHolidaysToCandidates,
 };
 
