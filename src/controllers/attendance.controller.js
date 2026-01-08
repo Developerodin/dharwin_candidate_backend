@@ -12,6 +12,9 @@ import {
   getAttendanceStatistics,
   getAllAttendance,
   addHolidaysToCandidates,
+  assignLeavesToCandidates,
+  updateLeaveForCandidate,
+  deleteLeaveForCandidate,
 } from '../services/attendance.service.js';
 import { getCandidateById } from '../services/candidate.service.js';
 
@@ -213,6 +216,46 @@ const addHolidays = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).send(result);
 });
 
+/**
+ * Assign leaves to candidate calendar attendance
+ */
+const assignLeaves = catchAsync(async (req, res) => {
+  const { candidateIds, dates, leaveType, notes } = req.body;
+
+  const result = await assignLeavesToCandidates(
+    candidateIds,
+    dates,
+    leaveType,
+    notes,
+    req.user
+  );
+
+  res.status(httpStatus.OK).send(result);
+});
+
+/**
+ * Update a leave for a candidate
+ */
+const updateLeave = catchAsync(async (req, res) => {
+  const { candidateId, leaveId } = req.params;
+  const { date, leaveType, notes } = req.body;
+
+  const result = await updateLeaveForCandidate(candidateId, leaveId, { date, leaveType, notes }, req.user);
+
+  res.status(httpStatus.OK).send(result);
+});
+
+/**
+ * Delete a leave for a candidate
+ */
+const deleteLeave = catchAsync(async (req, res) => {
+  const { candidateId, leaveId } = req.params;
+
+  const result = await deleteLeaveForCandidate(candidateId, leaveId, req.user);
+
+  res.status(httpStatus.OK).send(result);
+});
+
 export {
   createPunchIn,
   createPunchOut,
@@ -222,5 +265,8 @@ export {
   get,
   getStatistics,
   addHolidays,
+  assignLeaves,
+  updateLeave,
+  deleteLeave,
 };
 

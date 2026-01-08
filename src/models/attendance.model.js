@@ -67,6 +67,11 @@ const attendanceSchema = mongoose.Schema(
       default: 'Present',
       index: true,
     },
+    leaveType: {
+      type: String,
+      enum: ['casual', 'sick'],
+      index: true,
+    },
   },
   {
     timestamps: true,

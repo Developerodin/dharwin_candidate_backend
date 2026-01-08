@@ -41,6 +41,21 @@ router
   .route('/holidays')
   .post(auth('manageCandidates'), validate(attendanceValidation.addHolidaysToCandidates), attendanceController.addHolidays);
 
+// Assign leaves to candidate calendar attendance (admin only)
+router
+  .route('/leaves')
+  .post(auth('manageCandidates'), validate(attendanceValidation.assignLeavesToCandidates), attendanceController.assignLeaves);
+
+// Update a leave for a candidate (admin only)
+router
+  .route('/leaves/:candidateId/:leaveId')
+  .patch(auth('manageCandidates'), validate(attendanceValidation.updateLeave), attendanceController.updateLeave);
+
+// Delete a leave for a candidate (admin only)
+router
+  .route('/leaves/:candidateId/:leaveId')
+  .delete(auth('manageCandidates'), validate(attendanceValidation.deleteLeave), attendanceController.deleteLeave);
+
 // Get attendance by ID
 router
   .route('/:attendanceId')

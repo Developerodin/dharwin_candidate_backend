@@ -173,6 +173,31 @@ const candidateSchema = new mongoose.Schema(
       default: [],
       index: true,
     },
+    leaves: {
+      type: [
+        {
+          date: {
+            type: Date,
+            required: true,
+            index: true,
+          },
+          leaveType: {
+            type: String,
+            enum: ['casual', 'sick'],
+            required: true,
+          },
+          notes: {
+            type: String,
+            trim: true,
+          },
+          assignedAt: {
+            type: Date,
+            default: Date.now,
+          },
+        },
+      ],
+      default: [],
+    },
     shift: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Shift',

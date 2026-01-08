@@ -427,6 +427,341 @@ const addHolidaysToCandidates = async (candidateIds, holidayIds, user) => {
   };
 };
 
+/**
+ * Assign leaves to candidate calendar attendance
+ * Admin can assign leaves (casual or sick) to multiple candidates for specific dates
+ * @param {Array<string>} candidateIds - Array of candidate IDs
+ * @param {Array<Date>} dates - Array of dates for leave
+ * @param {string} leaveType - Type of leave ('casual' or 'sick')
+ * @param {string} [notes] - Optional notes
+ * @param {Object} user - Current user
+ * @returns {Promise<Object>}
+ */
+const assignLeavesToCandidates = async (candidateIds, dates, leaveType, notes, user) => {
+  // Check permissions: only admin can assign leaves
+  if (user.role !== 'admin') {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Only admin can assign leaves to candidates');
+  }
+
+  // Validate candidate IDs
+  const candidates = await Candidate.find({ _id: { $in: candidateIds } });
+  if (candidates.length !== candidateIds.length) {
+    const foundIds = candidates.map((c) => String(c._id));
+    const missingIds = candidateIds.filter((id) => !foundIds.includes(String(id)));
+    throw new ApiError(httpStatus.NOT_FOUND, `Some candidates not found: ${missingIds.join(', ')}`);
+  }
+
+  // Validate dates array
+  if (!Array.isArray(dates) || dates.length === 0) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'At least one date is required');
+  }
+
+  // Validate leave type
+  if (!['casual', 'sick'].includes(leaveType)) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Leave type must be either "casual" or "sick"');
+  }
+
+  // Normalize dates (remove duplicates and sort, validate dates)
+  // Use UTC methods to avoid timezone issues - normalize to UTC midnight
+  const normalizedDates = dates
+    .map((d) => {
+      const date = new Date(d);
+      if (isNaN(date.getTime())) {
+        throw new ApiError(httpStatus.BAD_REQUEST, `Invalid date: ${d}`);
+      }
+      // Normalize to UTC midnight to avoid timezone shifts
+      // Extract UTC year, month, day and create new UTC date at midnight
+      const utcYear = date.getUTCFullYear();
+      const utcMonth = date.getUTCMonth();
+      const utcDay = date.getUTCDate();
+      const utcDate = new Date(Date.UTC(utcYear, utcMonth, utcDay, 0, 0, 0, 0));
+      return utcDate;
+    })
+    .filter((date, index, self) => {
+      // Remove duplicates by comparing timestamps
+      return index === self.findIndex((d) => d.getTime() === date.getTime());
+    })
+    .sort((a, b) => a - b);
+
+  const createdRecords = [];
+  const skipped = [];
+  const candidateMap = new Map(candidates.map((c) => [String(c._id), c]));
+
+  // Process each candidate
+  for (const candidateId of candidateIds) {
+    const candidate = candidateMap.get(String(candidateId));
+    if (!candidate) continue;
+
+    // Initialize leaves array if it doesn't exist
+    if (!candidate.leaves) {
+      candidate.leaves = [];
+    }
+    
+    // Track if we added any leaves for this candidate
+    let leavesAdded = false;
+
+    // Create attendance records and add leave info for each date
+    for (const date of normalizedDates) {
+      // Date is already normalized to UTC midnight from the array
+      const normalizedDate = new Date(date);
+      
+      // Validate the date is valid
+      if (isNaN(normalizedDate.getTime())) {
+        throw new ApiError(httpStatus.BAD_REQUEST, `Invalid date: ${date}`);
+      }
+      
+      // Calculate next day in UTC
+      const nextDay = new Date(normalizedDate);
+      nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+
+      // Check if attendance already exists for this candidate & date
+      const existingAttendance = await Attendance.findOne({
+        candidate: candidateId,
+        date: {
+          $gte: normalizedDate,
+          $lt: nextDay,
+        },
+      });
+
+      // Check if leave already exists in candidate's leaves array for this date
+      const normalizedDateTimestamp = normalizedDate.getTime();
+      const existingLeave = candidate.leaves.find((leave) => {
+        const leaveDate = new Date(leave.date);
+        return leaveDate.getTime() === normalizedDateTimestamp;
+      });
+
+      // Create attendance record for leave (only if it doesn't exist)
+      let attendance = null;
+      if (!existingAttendance) {
+        const leaveNotes = notes || `${leaveType.charAt(0).toUpperCase() + leaveType.slice(1)} Leave`;
+        attendance = await Attendance.create({
+          candidate: candidateId,
+          candidateEmail: candidate.email,
+          date: normalizedDate,
+          punchIn: normalizedDate,
+          punchOut: null,
+          duration: 0,
+          notes: leaveNotes,
+          timezone: 'UTC',
+          status: 'Leave',
+          leaveType: leaveType,
+        });
+        createdRecords.push(await attendance.populate('candidate', 'fullName email'));
+      } else {
+        skipped.push({
+          candidateId,
+          candidateName: candidate.fullName,
+          date: normalizedDate.toISOString(),
+          reason: 'Attendance already exists for this date',
+        });
+      }
+
+      // Add leave information to candidate's leaves array (one entry per date)
+      // Only add if it doesn't already exist
+      if (!existingLeave) {
+        const leaveInfo = {
+          date: new Date(normalizedDate.getTime()), // Use getTime() to create fresh instance
+          leaveType: leaveType,
+          notes: notes || null,
+          assignedAt: new Date(),
+        };
+        
+        // Validate the date
+        if (isNaN(leaveInfo.date.getTime())) {
+          throw new ApiError(httpStatus.BAD_REQUEST, `Invalid date for leave: ${normalizedDate}`);
+        }
+        
+        // Push to leaves array - Mongoose will validate on save
+        candidate.leaves.push(leaveInfo);
+        leavesAdded = true;
+        
+        // Mark the leaves array as modified to ensure Mongoose saves it
+        candidate.markModified('leaves');
+      }
+    }
+
+    // Save candidate after processing all dates
+    // Only save if we added any leaves
+    if (leavesAdded) {
+      await candidate.save();
+    }
+  }
+
+  return {
+    success: true,
+    message: `Leaves assigned to ${candidates.length} candidate(s). Created ${createdRecords.length} attendance record(s).`,
+    data: {
+      candidatesUpdated: candidates.length,
+      leaveType: leaveType,
+      dates: normalizedDates.map((d) => d.toISOString()),
+      totalDays: normalizedDates.length,
+      attendanceRecordsCreated: createdRecords.length,
+      createdRecords,
+      skipped: skipped.length > 0 ? skipped : undefined,
+    },
+  };
+};
+
+/**
+ * Update a leave for a candidate
+ * Admin can update leave details (date, leaveType, notes)
+ * @param {string} candidateId - Candidate ID
+ * @param {string} leaveId - Leave ID (from leaves array)
+ * @param {Object} updateData - Data to update (date, leaveType, notes)
+ * @param {Object} user - Current user
+ * @returns {Promise<Object>}
+ */
+const updateLeaveForCandidate = async (candidateId, leaveId, updateData, user) => {
+  // Check permissions: only admin can update leaves
+  if (user.role !== 'admin') {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Only admin can update leaves');
+  }
+
+  // Validate candidate
+  const candidate = await Candidate.findById(candidateId);
+  if (!candidate) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Candidate not found');
+  }
+
+  // Find the leave in the candidate's leaves array
+  const leave = candidate.leaves.id(leaveId);
+  if (!leave) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Leave not found');
+  }
+
+  // Store old date for attendance record update
+  const oldDate = new Date(leave.date);
+  oldDate.setHours(0, 0, 0, 0);
+
+  // Update leave fields
+  if (updateData.date !== undefined) {
+    leave.date = new Date(updateData.date);
+  }
+  if (updateData.leaveType !== undefined) {
+    if (!['casual', 'sick'].includes(updateData.leaveType)) {
+      throw new ApiError(httpStatus.BAD_REQUEST, 'Leave type must be either "casual" or "sick"');
+    }
+    leave.leaveType = updateData.leaveType;
+  }
+  if (updateData.notes !== undefined) {
+    leave.notes = updateData.notes || null;
+  }
+
+  await candidate.save();
+
+  // Update corresponding attendance record
+  const newDate = new Date(leave.date);
+  newDate.setHours(0, 0, 0, 0);
+  const nextDay = new Date(newDate);
+  nextDay.setDate(nextDay.getDate() + 1);
+
+  // Find attendance record for the old date
+  const attendance = await Attendance.findOne({
+    candidate: candidateId,
+    date: {
+      $gte: oldDate,
+      $lt: new Date(oldDate.getTime() + 24 * 60 * 60 * 1000),
+    },
+    status: 'Leave',
+  });
+
+  if (attendance) {
+    // If date changed, check if attendance already exists for new date
+    if (newDate.getTime() !== oldDate.getTime()) {
+      const existingAttendance = await Attendance.findOne({
+        candidate: candidateId,
+        date: {
+          $gte: newDate,
+          $lt: nextDay,
+        },
+      });
+
+      if (existingAttendance) {
+        // Delete old attendance and keep existing one
+        await Attendance.findByIdAndDelete(attendance._id);
+      } else {
+        // Update attendance date
+        attendance.date = newDate;
+        attendance.punchIn = newDate;
+        attendance.leaveType = leave.leaveType;
+        attendance.notes = leave.notes || `${leave.leaveType.charAt(0).toUpperCase() + leave.leaveType.slice(1)} Leave`;
+        await attendance.save();
+      }
+    } else {
+      // Date didn't change, just update leave type and notes
+      attendance.leaveType = leave.leaveType;
+      attendance.notes = leave.notes || `${leave.leaveType.charAt(0).toUpperCase() + leave.leaveType.slice(1)} Leave`;
+      await attendance.save();
+    }
+  }
+
+  return {
+    success: true,
+    message: 'Leave updated successfully',
+    data: {
+      candidate: await candidate.populate('leaves'),
+      leave: leave,
+    },
+  };
+};
+
+/**
+ * Delete a leave for a candidate
+ * Admin can delete a leave and its corresponding attendance record
+ * @param {string} candidateId - Candidate ID
+ * @param {string} leaveId - Leave ID (from leaves array)
+ * @param {Object} user - Current user
+ * @returns {Promise<Object>}
+ */
+const deleteLeaveForCandidate = async (candidateId, leaveId, user) => {
+  // Check permissions: only admin can delete leaves
+  if (user.role !== 'admin') {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Only admin can delete leaves');
+  }
+
+  // Validate candidate
+  const candidate = await Candidate.findById(candidateId);
+  if (!candidate) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Candidate not found');
+  }
+
+  // Find the leave in the candidate's leaves array
+  const leave = candidate.leaves.id(leaveId);
+  if (!leave) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Leave not found');
+  }
+
+  // Store date for attendance record deletion
+  const leaveDate = new Date(leave.date);
+  leaveDate.setHours(0, 0, 0, 0);
+  const nextDay = new Date(leaveDate);
+  nextDay.setDate(nextDay.getDate() + 1);
+
+  // Remove leave from candidate's leaves array
+  candidate.leaves.pull(leaveId);
+  await candidate.save();
+
+  // Delete corresponding attendance record
+  await Attendance.deleteOne({
+    candidate: candidateId,
+    date: {
+      $gte: leaveDate,
+      $lt: nextDay,
+    },
+    status: 'Leave',
+    leaveType: leave.leaveType,
+  });
+
+  return {
+    success: true,
+    message: 'Leave deleted successfully',
+    data: {
+      candidateId: candidateId,
+      leaveId: leaveId,
+    },
+  };
+};
+
 export {
   punchIn,
   punchOut,
@@ -437,5 +772,8 @@ export {
   getAttendanceStatistics,
   getAllAttendance,
   addHolidaysToCandidates,
+  assignLeavesToCandidates,
+  updateLeaveForCandidate,
+  deleteLeaveForCandidate,
 };
 

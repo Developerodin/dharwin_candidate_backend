@@ -92,6 +92,67 @@ const addHolidaysToCandidates = {
   }),
 };
 
+const assignLeavesToCandidates = {
+  body: Joi.object().keys({
+    candidateIds: Joi.array()
+      .items(Joi.string().custom(objectId))
+      .min(1)
+      .required()
+      .messages({
+        'array.min': 'At least one candidate ID is required',
+        'any.required': 'Candidate IDs are required',
+      }),
+    dates: Joi.array()
+      .items(Joi.date())
+      .min(1)
+      .required()
+      .messages({
+        'array.min': 'At least one date is required',
+        'any.required': 'Dates are required',
+        'array.base': 'Dates must be an array',
+      }),
+    leaveType: Joi.string()
+      .valid('casual', 'sick')
+      .required()
+      .messages({
+        'any.required': 'Leave type is required',
+        'any.only': 'Leave type must be either "casual" or "sick"',
+      }),
+    notes: Joi.string().optional().trim().allow('', null),
+  }),
+};
+
+const updateLeave = {
+  params: Joi.object().keys({
+    candidateId: Joi.string().custom(objectId).required(),
+    leaveId: Joi.string().custom(objectId).required(),
+  }),
+  body: Joi.object()
+    .keys({
+      date: Joi.date().optional().messages({
+        'date.base': 'Date must be a valid date',
+      }),
+      leaveType: Joi.string()
+        .valid('casual', 'sick')
+        .optional()
+        .messages({
+          'any.only': 'Leave type must be either "casual" or "sick"',
+        }),
+      notes: Joi.string().optional().trim().allow('', null),
+    })
+    .min(1)
+    .messages({
+      'object.min': 'At least one field must be provided for update',
+    }),
+};
+
+const deleteLeave = {
+  params: Joi.object().keys({
+    candidateId: Joi.string().custom(objectId).required(),
+    leaveId: Joi.string().custom(objectId).required(),
+  }),
+};
+
 export {
   punchIn,
   punchOut,
@@ -101,5 +162,8 @@ export {
   getCurrentStatus,
   getStatistics,
   addHolidaysToCandidates,
+  assignLeavesToCandidates,
+  updateLeave,
+  deleteLeave,
 };
 
