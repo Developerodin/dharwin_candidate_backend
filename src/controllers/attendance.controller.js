@@ -15,6 +15,7 @@ import {
   assignLeavesToCandidates,
   updateLeaveForCandidate,
   deleteLeaveForCandidate,
+  cancelLeaveForCandidate,
 } from '../services/attendance.service.js';
 import { getCandidateById } from '../services/candidate.service.js';
 
@@ -256,6 +257,17 @@ const deleteLeave = catchAsync(async (req, res) => {
   res.status(httpStatus.OK).send(result);
 });
 
+/**
+ * Cancel a leave for a candidate
+ */
+const cancelLeave = catchAsync(async (req, res) => {
+  const { candidateId, leaveId } = req.params;
+
+  const result = await cancelLeaveForCandidate(candidateId, leaveId, req.user);
+
+  res.status(httpStatus.OK).send(result);
+});
+
 export {
   createPunchIn,
   createPunchOut,
@@ -268,5 +280,6 @@ export {
   assignLeaves,
   updateLeave,
   deleteLeave,
+  cancelLeave,
 };
 

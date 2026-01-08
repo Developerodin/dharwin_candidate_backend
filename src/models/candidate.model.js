@@ -183,7 +183,7 @@ const candidateSchema = new mongoose.Schema(
           },
           leaveType: {
             type: String,
-            enum: ['casual', 'sick'],
+            enum: ['casual', 'sick', 'unpaid'],
             required: true,
           },
           notes: {

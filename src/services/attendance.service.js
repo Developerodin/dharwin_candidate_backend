@@ -429,10 +429,10 @@ const addHolidaysToCandidates = async (candidateIds, holidayIds, user) => {
 
 /**
  * Assign leaves to candidate calendar attendance
- * Admin can assign leaves (casual or sick) to multiple candidates for specific dates
+ * Admin can assign leaves (casual, sick, or unpaid) to multiple candidates for specific dates
  * @param {Array<string>} candidateIds - Array of candidate IDs
  * @param {Array<Date>} dates - Array of dates for leave
- * @param {string} leaveType - Type of leave ('casual' or 'sick')
+ * @param {string} leaveType - Type of leave ('casual', 'sick', or 'unpaid')
  * @param {string} [notes] - Optional notes
  * @param {Object} user - Current user
  * @returns {Promise<Object>}
@@ -457,9 +457,16 @@ const assignLeavesToCandidates = async (candidateIds, dates, leaveType, notes, u
   }
 
   // Validate leave type
-  if (!['casual', 'sick'].includes(leaveType)) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Leave type must be either "casual" or "sick"');
+  if (!['casual', 'sick', 'unpaid'].includes(leaveType)) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Leave type must be either "casual", "sick", or "unpaid"');
   }
+
+  // Define leave limits
+  const LEAVE_LIMITS = {
+    casual: 21, // Paid leaves
+    sick: 5,    // Sick leaves
+    unpaid: Infinity, // Unpaid leaves (infinite)
+  };
 
   // Normalize dates (remove duplicates and sort, validate dates)
   // Use UTC methods to avoid timezone issues - normalize to UTC midnight
@@ -495,6 +502,36 @@ const assignLeavesToCandidates = async (candidateIds, dates, leaveType, notes, u
     // Initialize leaves array if it doesn't exist
     if (!candidate.leaves) {
       candidate.leaves = [];
+    }
+
+    // Count existing leaves of the same type for this candidate
+    const existingLeavesOfType = candidate.leaves.filter(
+      (leave) => leave.leaveType === leaveType
+    ).length;
+
+    // Count how many new leaves will be added (excluding duplicates)
+    let newLeavesCount = 0;
+    for (const date of normalizedDates) {
+      const normalizedDate = new Date(date);
+      const normalizedDateTimestamp = normalizedDate.getTime();
+      const existingLeave = candidate.leaves.find((leave) => {
+        const leaveDate = new Date(leave.date);
+        return leaveDate.getTime() === normalizedDateTimestamp && leave.leaveType === leaveType;
+      });
+      if (!existingLeave) {
+        newLeavesCount++;
+      }
+    }
+
+    // Check leave limits (only for casual and sick, not unpaid)
+    if (leaveType !== 'unpaid' && LEAVE_LIMITS[leaveType] !== Infinity) {
+      const totalLeavesAfter = existingLeavesOfType + newLeavesCount;
+      if (totalLeavesAfter > LEAVE_LIMITS[leaveType]) {
+        throw new ApiError(
+          httpStatus.BAD_REQUEST,
+          `Cannot assign ${newLeavesCount} ${leaveType} leave(s). Candidate already has ${existingLeavesOfType} ${leaveType} leave(s). Maximum allowed: ${LEAVE_LIMITS[leaveType]} ${leaveType} leave(s).`
+        );
+      }
     }
     
     // Track if we added any leaves for this candidate
@@ -629,18 +666,50 @@ const updateLeaveForCandidate = async (candidateId, leaveId, updateData, user) =
     throw new ApiError(httpStatus.NOT_FOUND, 'Leave not found');
   }
 
+  // Define leave limits
+  const LEAVE_LIMITS = {
+    casual: 21, // Paid leaves
+    sick: 5,    // Sick leaves
+    unpaid: Infinity, // Unpaid leaves (infinite)
+  };
+
   // Store old date for attendance record update
   const oldDate = new Date(leave.date);
   oldDate.setHours(0, 0, 0, 0);
+
+  // Store old leave type for limit validation
+  const oldLeaveType = leave.leaveType;
 
   // Update leave fields
   if (updateData.date !== undefined) {
     leave.date = new Date(updateData.date);
   }
   if (updateData.leaveType !== undefined) {
-    if (!['casual', 'sick'].includes(updateData.leaveType)) {
-      throw new ApiError(httpStatus.BAD_REQUEST, 'Leave type must be either "casual" or "sick"');
+    if (!['casual', 'sick', 'unpaid'].includes(updateData.leaveType)) {
+      throw new ApiError(httpStatus.BAD_REQUEST, 'Leave type must be either "casual", "sick", or "unpaid"');
     }
+
+    // If changing leave type, validate limits
+    if (updateData.leaveType !== oldLeaveType) {
+      const newLeaveType = updateData.leaveType;
+
+      // If changing to casual or sick (from any type), check limits
+      if (newLeaveType !== 'unpaid' && LEAVE_LIMITS[newLeaveType] !== Infinity) {
+        // Count existing leaves of the new type (excluding current leave)
+        const existingLeavesOfNewType = candidate.leaves.filter(
+          (l) => l.leaveType === newLeaveType && String(l._id) !== String(leaveId)
+        ).length;
+
+        // Check if adding this leave would exceed the limit
+        if (existingLeavesOfNewType + 1 > LEAVE_LIMITS[newLeaveType]) {
+          throw new ApiError(
+            httpStatus.BAD_REQUEST,
+            `Cannot change leave type to ${newLeaveType}. Candidate already has ${existingLeavesOfNewType} ${newLeaveType} leave(s). Maximum allowed: ${LEAVE_LIMITS[newLeaveType]} ${newLeaveType} leave(s).`
+          );
+        }
+      }
+    }
+
     leave.leaveType = updateData.leaveType;
   }
   if (updateData.notes !== undefined) {
@@ -762,6 +831,64 @@ const deleteLeaveForCandidate = async (candidateId, leaveId, user) => {
   };
 };
 
+/**
+ * Cancel a leave for a candidate
+ * Admin can cancel a leave and its corresponding attendance record
+ * This is similar to delete but with different semantics (cancellation vs deletion)
+ * @param {string} candidateId - Candidate ID
+ * @param {string} leaveId - Leave ID (from leaves array)
+ * @param {Object} user - Current user
+ * @returns {Promise<Object>}
+ */
+const cancelLeaveForCandidate = async (candidateId, leaveId, user) => {
+  // Check permissions: only admin can cancel leaves
+  if (user.role !== 'admin') {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Only admin can cancel leaves');
+  }
+
+  // Validate candidate
+  const candidate = await Candidate.findById(candidateId);
+  if (!candidate) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Candidate not found');
+  }
+
+  // Find the leave in the candidate's leaves array
+  const leave = candidate.leaves.id(leaveId);
+  if (!leave) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Leave not found');
+  }
+
+  // Store date for attendance record deletion
+  const leaveDate = new Date(leave.date);
+  leaveDate.setHours(0, 0, 0, 0);
+  const nextDay = new Date(leaveDate);
+  nextDay.setDate(nextDay.getDate() + 1);
+
+  // Remove leave from candidate's leaves array
+  candidate.leaves.pull(leaveId);
+  await candidate.save();
+
+  // Delete corresponding attendance record
+  await Attendance.deleteOne({
+    candidate: candidateId,
+    date: {
+      $gte: leaveDate,
+      $lt: nextDay,
+    },
+    status: 'Leave',
+    leaveType: leave.leaveType,
+  });
+
+  return {
+    success: true,
+    message: 'Leave cancelled successfully',
+    data: {
+      candidateId: candidateId,
+      leaveId: leaveId,
+    },
+  };
+};
+
 export {
   punchIn,
   punchOut,
@@ -775,5 +902,6 @@ export {
   assignLeavesToCandidates,
   updateLeaveForCandidate,
   deleteLeaveForCandidate,
+  cancelLeaveForCandidate,
 };
 

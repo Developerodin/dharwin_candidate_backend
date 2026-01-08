@@ -56,6 +56,11 @@ router
   .route('/leaves/:candidateId/:leaveId')
   .delete(auth('manageCandidates'), validate(attendanceValidation.deleteLeave), attendanceController.deleteLeave);
 
+// Cancel a leave for a candidate (admin only)
+router
+  .route('/leaves/:candidateId/:leaveId/cancel')
+  .post(auth('manageCandidates'), validate(attendanceValidation.cancelLeave), attendanceController.cancelLeave);
+
 // Get attendance by ID
 router
   .route('/:attendanceId')

@@ -10,15 +10,45 @@ import {
 } from '../services/shift.service.js';
 
 /**
- * Create a new shift
+ * Create a new shift or multiple shifts
  */
 const create = catchAsync(async (req, res) => {
-  const shift = await createShift(req.body, req.user);
-  res.status(httpStatus.CREATED).send({
-    success: true,
-    message: 'Shift created successfully',
-    data: shift,
-  });
+  const result = await createShift(req.body, req.user);
+  
+  // Check if it's a bulk creation with partial success
+  if (result && typeof result === 'object' && result.shifts && Array.isArray(result.shifts)) {
+    const { shifts, errors, partialSuccess } = result;
+    
+    if (partialSuccess) {
+      res.status(httpStatus.CREATED).send({
+        success: true,
+        message: `Created ${shifts.length} shift(s) successfully, ${errors.length} failed`,
+        data: shifts,
+        errors: errors,
+        partialSuccess: true,
+      });
+    } else {
+      res.status(httpStatus.CREATED).send({
+        success: true,
+        message: `${shifts.length} shift(s) created successfully`,
+        data: shifts,
+      });
+    }
+  } else if (Array.isArray(result)) {
+    // Bulk creation - all succeeded
+    res.status(httpStatus.CREATED).send({
+      success: true,
+      message: `${result.length} shift(s) created successfully`,
+      data: result,
+    });
+  } else {
+    // Single shift creation (backward compatible)
+    res.status(httpStatus.CREATED).send({
+      success: true,
+      message: 'Shift created successfully',
+      data: result,
+    });
+  }
 });
 
 /**

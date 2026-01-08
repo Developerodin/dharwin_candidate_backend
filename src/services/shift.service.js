@@ -4,17 +4,12 @@ import ApiError from '../utils/ApiError.js';
 import pick from '../utils/pick.js';
 
 /**
- * Create a new shift
+ * Create a single shift
  * @param {Object} shiftBody
  * @param {Object} user - Current user
  * @returns {Promise<Shift>}
  */
-const createShift = async (shiftBody, user) => {
-  // Check permissions: only admin can create shifts
-  if (user.role !== 'admin') {
-    throw new ApiError(httpStatus.FORBIDDEN, 'Only admin can create shifts');
-  }
-
+const createSingleShift = async (shiftBody, user) => {
   const { name, description, timezone, startTime, endTime, isActive } = shiftBody;
 
   // Validate time range
@@ -39,6 +34,68 @@ const createShift = async (shiftBody, user) => {
   });
 
   return shift;
+};
+
+/**
+ * Create a new shift or multiple shifts
+ * @param {Object|Array} shiftBody - Single shift object or array of shift objects
+ * @param {Object} user - Current user
+ * @returns {Promise<Shift|Array<Shift>>}
+ */
+const createShift = async (shiftBody, user) => {
+  // Check permissions: only admin can create shifts
+  if (user.role !== 'admin') {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Only admin can create shifts');
+  }
+
+  // Handle array of shifts (bulk creation)
+  if (Array.isArray(shiftBody)) {
+    if (shiftBody.length === 0) {
+      throw new ApiError(httpStatus.BAD_REQUEST, 'At least one shift is required');
+    }
+    if (shiftBody.length > 100) {
+      throw new ApiError(httpStatus.BAD_REQUEST, 'Cannot create more than 100 shifts at once');
+    }
+
+    // Validate and create all shifts
+    const shifts = [];
+    const errors = [];
+
+    for (let i = 0; i < shiftBody.length; i++) {
+      try {
+        const shift = await createSingleShift(shiftBody[i], user);
+        shifts.push(shift);
+      } catch (error) {
+        errors.push({
+          index: i,
+          shift: shiftBody[i],
+          error: error.message,
+        });
+      }
+    }
+
+    // If all shifts failed, throw error
+    if (shifts.length === 0) {
+      throw new ApiError(
+        httpStatus.BAD_REQUEST,
+        `Failed to create shifts: ${errors.map(e => `Shift ${e.index + 1}: ${e.error}`).join('; ')}`
+      );
+    }
+
+    // If some shifts failed, return partial success with errors
+    if (errors.length > 0) {
+      return {
+        shifts,
+        errors,
+        partialSuccess: true,
+      };
+    }
+
+    return shifts;
+  }
+
+  // Handle single shift (backward compatible)
+  return await createSingleShift(shiftBody, user);
 };
 
 /**

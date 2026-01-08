@@ -21,6 +21,8 @@ Authorization: Bearer <your-jwt-token>
 - **Timezone-Aware**: Each shift is associated with a timezone (IANA format, e.g., 'America/New_York', 'Asia/Kolkata')
 - **24-Hour Time Format**: Times are stored in "HH:mm" format (e.g., "10:00", "18:00")
 - **Overnight Shifts**: Shifts can span midnight (e.g., 22:00 to 06:00)
+- **Bulk Creation**: Create up to 100 shifts at once by sending an array of shift objects
+- **Backward Compatible**: Single shift creation (sending an object) still works as before
 
 ### Permissions
 - **Create/Update/Delete**: Admin only (requires `manageCandidates` permission)
@@ -47,13 +49,15 @@ Authorization: Bearer <your-jwt-token>
 
 ### 1. Create Shift
 
-Create a new shift with timezone and time range.
+Create a new shift or multiple shifts with timezone and time range. The API supports both single shift creation (backward compatible) and bulk creation of up to 100 shifts at once.
 
 **Endpoint:** `POST /v1/shifts`
 
 **Access:** Admin only
 
-**Request Body:**
+#### Single Shift Creation
+
+**Request Body (Single Shift Object):**
 ```json
 {
   "name": "Morning Shift",
@@ -75,7 +79,7 @@ Create a new shift with timezone and time range.
 | `endTime` | string | Yes | End time in HH:mm format (24-hour, e.g., "18:00") |
 | `isActive` | boolean | No | Active status (default: true) |
 
-**Request Example:**
+**Request Example (Single Shift):**
 ```javascript
 // Using fetch
 const response = await fetch('/v1/shifts', {
@@ -97,7 +101,7 @@ const response = await fetch('/v1/shifts', {
 const data = await response.json();
 ```
 
-**Success Response (201 Created):**
+**Success Response (201 Created) - Single Shift:**
 ```json
 {
   "success": true,
@@ -113,6 +117,142 @@ const data = await response.json();
     "createdAt": "2024-01-15T10:30:00.000Z",
     "updatedAt": "2024-01-15T10:30:00.000Z"
   }
+}
+```
+
+#### Bulk Shift Creation
+
+**Request Body (Array of Shift Objects):**
+```json
+[
+  {
+    "name": "Morning Shift",
+    "description": "Standard morning work shift",
+    "timezone": "America/New_York",
+    "startTime": "09:00",
+    "endTime": "17:00",
+    "isActive": true
+  },
+  {
+    "name": "Evening Shift",
+    "description": "Evening work shift",
+    "timezone": "America/New_York",
+    "startTime": "17:00",
+    "endTime": "01:00",
+    "isActive": true
+  },
+  {
+    "name": "Night Shift",
+    "description": "Overnight shift",
+    "timezone": "Asia/Kolkata",
+    "startTime": "22:00",
+    "endTime": "06:00",
+    "isActive": true
+  }
+]
+```
+
+**Bulk Creation Parameters:**
+- **Array Length**: Minimum 1 shift, maximum 100 shifts per request
+- Each shift object in the array follows the same parameter structure as single shift creation
+- All shifts are validated independently
+- If some shifts fail validation, the API will still create valid shifts and return partial success
+
+**Request Example (Bulk Creation):**
+```javascript
+// Using fetch - Create multiple shifts
+const response = await fetch('/v1/shifts', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer <admin-token>'
+  },
+  body: JSON.stringify([
+    {
+      name: "Morning Shift",
+      description: "Standard morning work shift",
+      timezone: 'America/New_York',
+      startTime: '09:00',
+      endTime: '17:00',
+      isActive: true
+    },
+    {
+      name: "Evening Shift",
+      description: "Evening work shift",
+      timezone: 'America/New_York',
+      startTime: '17:00',
+      endTime: '01:00',
+      isActive: true
+    }
+  ])
+});
+
+const data = await response.json();
+```
+
+**Success Response (201 Created) - All Shifts Succeeded:**
+```json
+{
+  "success": true,
+  "message": "2 shift(s) created successfully",
+  "data": [
+    {
+      "id": "507f1f77bcf86cd799439020",
+      "name": "Morning Shift",
+      "description": "Standard morning work shift",
+      "timezone": "America/New_York",
+      "startTime": "09:00",
+      "endTime": "17:00",
+      "isActive": true,
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "updatedAt": "2024-01-15T10:30:00.000Z"
+    },
+    {
+      "id": "507f1f77bcf86cd799439021",
+      "name": "Evening Shift",
+      "description": "Evening work shift",
+      "timezone": "America/New_York",
+      "startTime": "17:00",
+      "endTime": "01:00",
+      "isActive": true,
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "updatedAt": "2024-01-15T10:30:00.000Z"
+    }
+  ]
+}
+```
+
+**Success Response (201 Created) - Partial Success (Some Shifts Failed):**
+```json
+{
+  "success": true,
+  "message": "Created 1 shift(s) successfully, 1 failed",
+  "data": [
+    {
+      "id": "507f1f77bcf86cd799439020",
+      "name": "Morning Shift",
+      "description": "Standard morning work shift",
+      "timezone": "America/New_York",
+      "startTime": "09:00",
+      "endTime": "17:00",
+      "isActive": true,
+      "createdAt": "2024-01-15T10:30:00.000Z",
+      "updatedAt": "2024-01-15T10:30:00.000Z"
+    }
+  ],
+  "errors": [
+    {
+      "index": 1,
+      "shift": {
+        "name": "Invalid Shift",
+        "timezone": "America/New_York",
+        "startTime": "10:00",
+        "endTime": "10:00"
+      },
+      "error": "End time cannot be the same as start time"
+    }
+  ],
+  "partialSuccess": true
 }
 ```
 
@@ -139,6 +279,30 @@ const data = await response.json();
 {
   "code": 400,
   "message": "End time cannot be the same as start time"
+}
+```
+
+**400 Bad Request - Empty Array:**
+```json
+{
+  "code": 400,
+  "message": "At least one shift is required"
+}
+```
+
+**400 Bad Request - Too Many Shifts:**
+```json
+{
+  "code": 400,
+  "message": "Cannot create more than 100 shifts at once"
+}
+```
+
+**400 Bad Request - All Shifts Failed (Bulk Creation):**
+```json
+{
+  "code": 400,
+  "message": "Failed to create shifts: Shift 1: End time cannot be the same as start time; Shift 2: Shift name is required"
 }
 ```
 
@@ -472,7 +636,7 @@ const ShiftManager = () => {
     }
   };
 
-  // Create shift
+  // Create single shift
   const createShift = async () => {
     if (!formData.name || !formData.timezone || !formData.startTime || !formData.endTime) {
       setError('Name, timezone, start time, and end time are required');
@@ -497,7 +661,9 @@ const ShiftManager = () => {
         }
       });
       
-      setShifts([...shifts, response.data.data]);
+      // Handle both single and bulk responses
+      const newShifts = Array.isArray(response.data.data) ? response.data.data : [response.data.data];
+      setShifts([...shifts, ...newShifts]);
       setFormData({ 
         name: '', 
         description: '', 
@@ -506,9 +672,50 @@ const ShiftManager = () => {
         endTime: '', 
         isActive: true 
       });
-      alert('Shift created successfully');
+      alert(response.data.message || 'Shift created successfully');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to create shift');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Create multiple shifts (bulk)
+  const createBulkShifts = async (shiftsArray) => {
+    if (!Array.isArray(shiftsArray) || shiftsArray.length === 0) {
+      setError('At least one shift is required');
+      return;
+    }
+
+    if (shiftsArray.length > 100) {
+      setError('Cannot create more than 100 shifts at once');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      const token = localStorage.getItem('token');
+      const response = await axios.post('/v1/shifts', shiftsArray, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      // Handle response
+      const newShifts = Array.isArray(response.data.data) ? response.data.data : [response.data.data];
+      setShifts([...shifts, ...newShifts]);
+      
+      // Show partial success message if applicable
+      if (response.data.partialSuccess) {
+        alert(`${response.data.message}. Check errors for details.`);
+        console.warn('Partial success:', response.data.errors);
+      } else {
+        alert(response.data.message || 'Shifts created successfully');
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to create shifts');
     } finally {
       setLoading(false);
     }
@@ -643,7 +850,7 @@ export default ShiftManager;
 ### Using Fetch API
 
 ```javascript
-// Create shift
+// Create single shift
 const createShift = async (shiftData) => {
   try {
     const token = localStorage.getItem('token');
@@ -664,6 +871,46 @@ const createShift = async (shiftData) => {
     return await response.json();
   } catch (error) {
     console.error('Error creating shift:', error);
+    throw error;
+  }
+};
+
+// Create multiple shifts (bulk)
+const createBulkShifts = async (shiftsArray) => {
+  if (!Array.isArray(shiftsArray) || shiftsArray.length === 0) {
+    throw new Error('At least one shift is required');
+  }
+
+  if (shiftsArray.length > 100) {
+    throw new Error('Cannot create more than 100 shifts at once');
+  }
+
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch('/v1/shifts', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(shiftsArray)
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message);
+    }
+
+    const result = await response.json();
+    
+    // Check for partial success
+    if (result.partialSuccess && result.errors) {
+      console.warn('Some shifts failed to create:', result.errors);
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Error creating shifts:', error);
     throw error;
   }
 };
@@ -740,7 +987,7 @@ const deleteShift = async (shiftId) => {
   }
 };
 
-// Usage examples
+// Usage examples - Single shift
 await createShift({
   name: 'Morning Shift',
   description: 'Standard morning work shift',
@@ -760,6 +1007,34 @@ await createShift({
   isActive: true
 });
 
+// Bulk creation - Multiple shifts at once
+await createBulkShifts([
+  {
+    name: 'Morning Shift',
+    description: 'Standard morning work shift',
+    timezone: 'America/New_York',
+    startTime: '09:00',
+    endTime: '17:00',
+    isActive: true
+  },
+  {
+    name: 'Evening Shift',
+    description: 'Evening work shift',
+    timezone: 'America/New_York',
+    startTime: '17:00',
+    endTime: '01:00',
+    isActive: true
+  },
+  {
+    name: 'Night Shift',
+    description: 'Overnight shift',
+    timezone: 'Asia/Kolkata',
+    startTime: '22:00',
+    endTime: '06:00',
+    isActive: true
+  }
+]);
+
 const shifts = await getShifts({ timezone: 'America/New_York', isActive: true });
 await updateShift('507f1f77bcf86cd799439020', { startTime: '09:00', endTime: '17:00' });
 await deleteShift('507f1f77bcf86cd799439020');
@@ -770,6 +1045,7 @@ await deleteShift('507f1f77bcf86cd799439020');
 ```javascript
 import axios from 'axios';
 
+// Create single shift
 const createShift = async (shiftData) => {
   const token = localStorage.getItem('token');
   const response = await axios.post('/v1/shifts', shiftData, {
@@ -778,6 +1054,32 @@ const createShift = async (shiftData) => {
       'Content-Type': 'application/json'
     }
   });
+  return response.data;
+};
+
+// Create multiple shifts (bulk)
+const createBulkShifts = async (shiftsArray) => {
+  if (!Array.isArray(shiftsArray) || shiftsArray.length === 0) {
+    throw new Error('At least one shift is required');
+  }
+
+  if (shiftsArray.length > 100) {
+    throw new Error('Cannot create more than 100 shifts at once');
+  }
+
+  const token = localStorage.getItem('token');
+  const response = await axios.post('/v1/shifts', shiftsArray, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  });
+  
+  // Check for partial success
+  if (response.data.partialSuccess && response.data.errors) {
+    console.warn('Some shifts failed to create:', response.data.errors);
+  }
+  
   return response.data;
 };
 
@@ -843,6 +1145,9 @@ const deleteShift = async (shiftId) => {
 ## Summary
 
 - **Create Shift**: `POST /v1/shifts`
+  - **Single Shift**: Send a shift object (backward compatible)
+  - **Bulk Creation**: Send an array of shift objects (1-100 shifts)
+  - **Partial Success**: If some shifts fail, valid shifts are still created and errors are returned
 - **Get All Shifts**: `GET /v1/shifts`
 - **Get Shift by ID**: `GET /v1/shifts/:shiftId`
 - **Update Shift**: `PATCH /v1/shifts/:shiftId`
@@ -858,4 +1163,5 @@ const deleteShift = async (shiftId) => {
 - **Time Format**: HH:mm in 24-hour format (e.g., "10:00", "18:00")
 - **Overnight Shifts**: Supported (endTime < startTime means next day)
 - **Timezone**: IANA format (e.g., 'America/New_York', 'Asia/Kolkata', 'UTC')
+- **Bulk Creation Limits**: Minimum 1 shift, maximum 100 shifts per request
 

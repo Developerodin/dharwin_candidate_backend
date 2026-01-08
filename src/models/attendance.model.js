@@ -69,7 +69,7 @@ const attendanceSchema = mongoose.Schema(
     },
     leaveType: {
       type: String,
-      enum: ['casual', 'sick'],
+      enum: ['casual', 'sick', 'unpaid'],
       index: true,
     },
   },

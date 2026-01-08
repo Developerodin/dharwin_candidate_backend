@@ -92,6 +92,14 @@ const addHolidaysToCandidates = {
   }),
 };
 
+/**
+ * Leave limits validation:
+ * - Casual (paid) leaves: Maximum 21 per candidate
+ * - Sick leaves: Maximum 5 per candidate
+ * - Unpaid leaves: Unlimited (no limit)
+ * 
+ * These limits are enforced in the service layer when assigning or updating leaves.
+ */
 const assignLeavesToCandidates = {
   body: Joi.object().keys({
     candidateIds: Joi.array()
@@ -112,11 +120,11 @@ const assignLeavesToCandidates = {
         'array.base': 'Dates must be an array',
       }),
     leaveType: Joi.string()
-      .valid('casual', 'sick')
+      .valid('casual', 'sick', 'unpaid')
       .required()
       .messages({
         'any.required': 'Leave type is required',
-        'any.only': 'Leave type must be either "casual" or "sick"',
+        'any.only': 'Leave type must be either "casual", "sick", or "unpaid"',
       }),
     notes: Joi.string().optional().trim().allow('', null),
   }),
@@ -133,10 +141,10 @@ const updateLeave = {
         'date.base': 'Date must be a valid date',
       }),
       leaveType: Joi.string()
-        .valid('casual', 'sick')
+        .valid('casual', 'sick', 'unpaid')
         .optional()
         .messages({
-          'any.only': 'Leave type must be either "casual" or "sick"',
+          'any.only': 'Leave type must be either "casual", "sick", or "unpaid"',
         }),
       notes: Joi.string().optional().trim().allow('', null),
     })
@@ -147,6 +155,13 @@ const updateLeave = {
 };
 
 const deleteLeave = {
+  params: Joi.object().keys({
+    candidateId: Joi.string().custom(objectId).required(),
+    leaveId: Joi.string().custom(objectId).required(),
+  }),
+};
+
+const cancelLeave = {
   params: Joi.object().keys({
     candidateId: Joi.string().custom(objectId).required(),
     leaveId: Joi.string().custom(objectId).required(),
@@ -165,5 +180,6 @@ export {
   assignLeavesToCandidates,
   updateLeave,
   deleteLeave,
+  cancelLeave,
 };
 
