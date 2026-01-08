@@ -464,6 +464,36 @@ const getWeekOff = {
   }),
 };
 
-export { addRecruiterNote, addRecruiterFeedback, assignRecruiter, updateJoiningDate, updateResignDate, updateWeekOff, getWeekOff };
+const assignShift = {
+  body: Joi.object()
+    .keys({
+      candidateIds: Joi.array()
+        .items(Joi.string().custom(objectId))
+        .min(1)
+        .required()
+        .messages({
+          'array.min': 'At least one candidate ID is required',
+          'any.required': 'Candidate IDs are required',
+        }),
+      shiftId: Joi.string()
+        .custom(objectId)
+        .required()
+        .messages({
+          'any.required': 'Shift ID is required',
+        }),
+    })
+    .required(),
+};
+
+export {
+  addRecruiterNote,
+  addRecruiterFeedback,
+  assignRecruiter,
+  updateJoiningDate,
+  updateResignDate,
+  updateWeekOff,
+  getWeekOff,
+  assignShift,
+};
 
 

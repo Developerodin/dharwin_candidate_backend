@@ -57,6 +57,11 @@ router
   .route('/:candidateId/week-off')
   .get(auth(), validate(candidateValidation.getWeekOff), candidateController.getWeekOff);
 
+// Shift assignment routes - MUST come before /:candidateId route
+router
+  .route('/assign-shift')
+  .post(auth('manageCandidates'), validate(candidateValidation.assignShift), candidateController.assignShift);
+
 // Joining date and resign date routes - MUST come before /:candidateId route
 router
   .route('/:candidateId/joining-date')

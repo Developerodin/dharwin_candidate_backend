@@ -5,6 +5,7 @@ import Token from '../models/token.model.js';
 import { createUser, getUserByEmail, updateUserById, getUserById } from './user.service.js';
 import { generateVerifyEmailToken } from './token.service.js';
 import { sendVerificationEmail } from './email.service.js';
+import { getShiftById } from './shift.service.js';
 import ApiError from '../utils/ApiError.js';
 
 const isOwnerOrAdmin = (user, candidate) => {
@@ -1299,6 +1300,65 @@ const getCandidateWeekOff = async (candidateId) => {
   };
 };
 
+/**
+ * Assign shift to multiple candidates
+ * @param {Array<string>} candidateIds - Array of candidate IDs
+ * @param {string} shiftId - Shift ID to assign
+ * @param {Object} user - Current user
+ * @returns {Promise<Object>} Object with updated candidates and summary
+ */
+const assignShiftToCandidates = async (candidateIds, shiftId, user) => {
+  // Check permissions: only admin can assign shifts
+  if (user.role !== 'admin') {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Only admin can assign shifts to candidates');
+  }
+
+  // Validate and fetch shift
+  const shift = await getShiftById(shiftId);
+  if (!shift) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Shift not found');
+  }
+
+  // Validate candidate IDs
+  const candidates = await Candidate.find({ _id: { $in: candidateIds } });
+  if (candidates.length !== candidateIds.length) {
+    const foundIds = candidates.map((c) => String(c._id));
+    const missingIds = candidateIds.filter((id) => !foundIds.includes(String(id)));
+    throw new ApiError(httpStatus.NOT_FOUND, `Some candidates not found: ${missingIds.join(', ')}`);
+  }
+
+  // Update shift reference for all candidates
+  const updateResult = await Candidate.updateMany(
+    { _id: { $in: candidateIds } },
+    { $set: { shift: shiftId } }
+  );
+
+  // Fetch updated candidates with populated shift
+  const updatedCandidates = await Candidate.find({ _id: { $in: candidateIds } })
+    .populate('owner', 'name email')
+    .populate('adminId', 'name email')
+    .populate('shift', 'name description timezone startTime endTime isActive')
+    .select('fullName email shift owner adminId');
+
+  return {
+    success: true,
+    message: `Shift assigned to ${updateResult.modifiedCount} candidate(s)`,
+    data: {
+      updatedCount: updateResult.modifiedCount,
+      shift: {
+        id: shift.id,
+        name: shift.name,
+        description: shift.description,
+        timezone: shift.timezone,
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+        isActive: shift.isActive,
+      },
+      candidates: updatedCandidates,
+    },
+  };
+};
+
 export {
   createCandidate,
   queryCandidates,
@@ -1332,6 +1392,8 @@ export {
   // Week-off calendar
   updateWeekOffForCandidates,
   getCandidateWeekOff,
+  // Shift assignment
+  assignShiftToCandidates,
 };
 
 

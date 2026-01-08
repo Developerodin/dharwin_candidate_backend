@@ -12,6 +12,7 @@ import Job from './job.model.js';
 import JobTemplate from './jobTemplate.model.js';
 import RecruiterActivityLog from './recruiterActivityLog.model.js';
 import Holiday from './holiday.model.js';
+import Shift from './shift.model.js';
 
-export { Token, User, Candidate, Meeting, LoginLog, Attendance, ChatMessage, Project, Task, TaskComment, Job, JobTemplate, RecruiterActivityLog, Holiday };
+export { Token, User, Candidate, Meeting, LoginLog, Attendance, ChatMessage, Project, Task, TaskComment, Job, JobTemplate, RecruiterActivityLog, Holiday, Shift };
 

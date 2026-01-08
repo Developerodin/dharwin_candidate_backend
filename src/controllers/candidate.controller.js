@@ -24,7 +24,8 @@ import {
   updateJoiningDate,
   updateResignDate,
   updateWeekOffForCandidates,
-  getCandidateWeekOff
+  getCandidateWeekOff,
+  assignShiftToCandidates
 } from '../services/candidate.service.js';
 import { logActivity } from '../services/recruiterActivity.service.js';
 import { sendEmail, sendCandidateProfileShareEmail } from '../services/email.service.js';
@@ -1234,6 +1235,17 @@ const getWeekOff = catchAsync(async (req, res) => {
   });
 });
 
-export { updateJoining, updateResign, updateWeekOff, getWeekOff };
+/**
+ * Assign shift to multiple candidates
+ */
+const assignShift = catchAsync(async (req, res) => {
+  const { candidateIds, shiftId } = req.body;
+  
+  const result = await assignShiftToCandidates(candidateIds, shiftId, req.user);
+  
+  res.status(httpStatus.OK).send(result);
+});
+
+export { updateJoining, updateResign, updateWeekOff, getWeekOff, assignShift };
 
 

@@ -173,6 +173,12 @@ const candidateSchema = new mongoose.Schema(
       default: [],
       index: true,
     },
+    shift: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Shift',
+      default: null,
+      index: true,
+    },
   },
   { timestamps: true }
 );
