@@ -7,6 +7,11 @@ import pick from '../utils/pick.js';
 
 /**
  * Punch in for a candidate
+ * Supports all shift types including:
+ * - Regular shifts (e.g., 9:00 AM - 6:00 PM)
+ * - Night shifts (e.g., 7:30 PM - 4:30 AM) - punch in and out on different calendar days
+ * - Timezone-aware shifts (e.g., IST, EST, PST)
+ * 
  * @param {ObjectId} candidateId
  * @param {Date} [punchInTime] - Optional punch in time (defaults to now)
  * @param {string} [notes] - Optional notes
@@ -26,7 +31,7 @@ const punchIn = async (candidateId, punchInTime = new Date(), notes, timezone = 
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
-  // Check if there's already an attendance record for today (prevent multiple punch-in/out cycles)
+  // Check if there's already an attendance record for today
   const existingAttendance = await Attendance.findOne({
     candidate: candidateId,
     date: {
@@ -36,18 +41,31 @@ const punchIn = async (candidateId, punchInTime = new Date(), notes, timezone = 
   });
 
   if (existingAttendance) {
-    // If already punched out, cannot punch in again today
+    // If already punched out, update the existing entry with new punch-in
     if (existingAttendance.punchOut) {
-      throw new ApiError(
-        httpStatus.BAD_REQUEST,
-        'You have already completed punch-in and punch-out for today. Only one punch-in/punch-out cycle is allowed per day.'
-      );
+      existingAttendance.punchIn = punchInTime;
+      existingAttendance.punchOut = null;
+      existingAttendance.duration = 0;
+      if (notes) {
+        existingAttendance.notes = notes;
+      }
+      if (timezone) {
+        existingAttendance.timezone = timezone;
+      }
+      existingAttendance.status = 'Present';
+      await existingAttendance.save();
+      return existingAttendance.populate('candidate', 'fullName email');
     }
-    // If already punched in but not punched out
-    throw new ApiError(
-      httpStatus.BAD_REQUEST,
-      'You are already punched in. Please punch out first.'
-    );
+    // If already punched in but not punched out, update punch-in time
+    existingAttendance.punchIn = punchInTime;
+    if (notes) {
+      existingAttendance.notes = notes;
+    }
+    if (timezone) {
+      existingAttendance.timezone = timezone;
+    }
+    await existingAttendance.save();
+    return existingAttendance.populate('candidate', 'fullName email');
   }
 
   // Create new attendance record with timezone and Present status
@@ -66,6 +84,14 @@ const punchIn = async (candidateId, punchInTime = new Date(), notes, timezone = 
 
 /**
  * Punch out for a candidate
+ * Supports all shift types including:
+ * - Regular shifts (e.g., 9:00 AM - 6:00 PM)
+ * - Night shifts (e.g., 7:30 PM - 4:30 AM) - automatically finds punch-in from previous day
+ * - Timezone-aware shifts (e.g., IST, EST, PST)
+ * 
+ * The function checks up to 3 days back to find active punch-ins, ensuring night shifts work correctly
+ * even when punch-in and punch-out occur on different calendar days.
+ * 
  * @param {ObjectId} candidateId
  * @param {Date} [punchOutTime] - Optional punch out time (defaults to now)
  * @param {string} [notes] - Optional notes
@@ -78,9 +104,19 @@ const punchOut = async (candidateId, punchOutTime = new Date(), notes, timezone)
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
+  
+  // Get yesterday's date (for night shift support - punch in yesterday, punch out today)
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  // Get day before yesterday (for edge cases with very long shifts)
+  const dayBeforeYesterday = new Date(today);
+  dayBeforeYesterday.setDate(dayBeforeYesterday.getDate() - 2);
 
-  // Find active punch in for today (not yet punched out)
-  const attendance = await Attendance.findOne({
+  // Find active punch in - check today, yesterday, and day before yesterday
+  // This handles all scenarios including night shifts that span multiple days
+  // First check today
+  let attendance = await Attendance.findOne({
     candidate: candidateId,
     date: {
       $gte: today,
@@ -90,9 +126,36 @@ const punchOut = async (candidateId, punchOutTime = new Date(), notes, timezone)
     isActive: true,
   });
 
+  // If not found today, check yesterday (night shift scenario - most common)
   if (!attendance) {
-    // Check if they already punched out today
-    const alreadyPunchedOut = await Attendance.findOne({
+    attendance = await Attendance.findOne({
+      candidate: candidateId,
+      date: {
+        $gte: yesterday,
+        $lt: today,
+      },
+      punchOut: null,
+      isActive: true,
+    });
+  }
+
+  // If still not found, check day before yesterday (edge case for very long shifts)
+  if (!attendance) {
+    attendance = await Attendance.findOne({
+      candidate: candidateId,
+      date: {
+        $gte: dayBeforeYesterday,
+        $lt: yesterday,
+      },
+      punchOut: null,
+      isActive: true,
+    });
+  }
+
+  if (!attendance) {
+    // Check if they already punched out - update the existing entry
+    // Check today, yesterday, and day before yesterday to handle all shift scenarios
+    let alreadyPunchedOut = await Attendance.findOne({
       candidate: candidateId,
       date: {
         $gte: today,
@@ -101,11 +164,50 @@ const punchOut = async (candidateId, punchOutTime = new Date(), notes, timezone)
       punchOut: { $ne: null },
     });
 
+    // If not found today, check yesterday (night shift scenario)
+    if (!alreadyPunchedOut) {
+      alreadyPunchedOut = await Attendance.findOne({
+        candidate: candidateId,
+        date: {
+          $gte: yesterday,
+          $lt: today,
+        },
+        punchOut: { $ne: null },
+      });
+    }
+
+    // If still not found, check day before yesterday (edge case)
+    if (!alreadyPunchedOut) {
+      alreadyPunchedOut = await Attendance.findOne({
+        candidate: candidateId,
+        date: {
+          $gte: dayBeforeYesterday,
+          $lt: yesterday,
+        },
+        punchOut: { $ne: null },
+      });
+    }
+
     if (alreadyPunchedOut) {
-      throw new ApiError(
-        httpStatus.BAD_REQUEST,
-        'You have already punched out for today. Only one punch-in/punch-out cycle is allowed per day.'
-      );
+      // Update existing entry with new punch-out time
+      // Validate punch out time is after punch in time
+      if (punchOutTime < alreadyPunchedOut.punchIn) {
+        throw new ApiError(
+          httpStatus.BAD_REQUEST,
+          'Punch out time cannot be before punch in time.'
+        );
+      }
+      alreadyPunchedOut.punchOut = punchOutTime;
+      alreadyPunchedOut.duration = punchOutTime.getTime() - alreadyPunchedOut.punchIn.getTime();
+      alreadyPunchedOut.status = 'Present';
+      if (notes) {
+        alreadyPunchedOut.notes = notes;
+      }
+      if (timezone) {
+        alreadyPunchedOut.timezone = timezone;
+      }
+      await alreadyPunchedOut.save();
+      return alreadyPunchedOut.populate('candidate', 'fullName email');
     }
 
     throw new ApiError(
@@ -201,6 +303,9 @@ const getAttendanceByCandidateId = async (candidateId, options = {}) => {
 
 /**
  * Get current punch status for a candidate
+ * Supports all shift types including night shifts that span multiple calendar days.
+ * Checks up to 3 days back to find active punch-ins.
+ * 
  * @param {ObjectId} candidateId
  * @returns {Promise<Attendance|null>}
  */
@@ -209,8 +314,17 @@ const getCurrentPunchStatus = async (candidateId) => {
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
+  
+  // Get yesterday's date (for night shift support)
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  // Get day before yesterday (for edge cases with very long shifts)
+  const dayBeforeYesterday = new Date(today);
+  dayBeforeYesterday.setDate(dayBeforeYesterday.getDate() - 2);
 
-  const attendance = await Attendance.findOne({
+  // Check today first
+  let attendance = await Attendance.findOne({
     candidate: candidateId,
     date: {
       $gte: today,
@@ -219,6 +333,32 @@ const getCurrentPunchStatus = async (candidateId) => {
     punchOut: null,
     isActive: true,
   }).populate('candidate', 'fullName email');
+
+  // If not found today, check yesterday (night shift scenario - most common)
+  if (!attendance) {
+    attendance = await Attendance.findOne({
+      candidate: candidateId,
+      date: {
+        $gte: yesterday,
+        $lt: today,
+      },
+      punchOut: null,
+      isActive: true,
+    }).populate('candidate', 'fullName email');
+  }
+
+  // If still not found, check day before yesterday (edge case for very long shifts)
+  if (!attendance) {
+    attendance = await Attendance.findOne({
+      candidate: candidateId,
+      date: {
+        $gte: dayBeforeYesterday,
+        $lt: yesterday,
+      },
+      punchOut: null,
+      isActive: true,
+    }).populate('candidate', 'fullName email');
+  }
 
   return attendance;
 };

@@ -16,7 +16,7 @@ Authorization: Bearer <your-jwt-token>
 
 **Endpoint:** `POST /v1/attendance/punch-in/:candidateId`
 
-**Description:** Record a punch-in for a candidate. Creates a new attendance record for the day.
+**Description:** Record a punch-in for a candidate. Creates a new attendance record for the day. Supports backdated attendance by providing `punchInTime` parameter with a past date/time.
 
 **Permissions:** 
 - Candidate owner (the user who owns the candidate profile)
@@ -28,11 +28,16 @@ Authorization: Bearer <your-jwt-token>
 **Request Body:**
 ```json
 {
-  "punchInTime": "2024-01-15T09:00:00.000Z",  // Optional: ISO 8601 date string. Defaults to current time if not provided
+  "punchInTime": "2024-01-15T09:00:00.000Z",  // Optional: ISO 8601 date string. Defaults to current time if not provided. Can be a past date for backdated attendance
   "notes": "Starting work on project X",      // Optional: Additional notes
   "timezone": "America/New_York"              // Optional: IANA timezone (e.g., 'America/New_York', 'Asia/Kolkata', 'UTC'). Defaults to 'UTC'
 }
 ```
+
+**Backdated Attendance:**
+- You can provide a past date/time in `punchInTime` to create backdated attendance
+- The system will create/update attendance record for that date
+- **Note**: For approval workflow, use the [Backdated Attendance Request API](./BACKDATED_ATTENDANCE_REQUEST_API.md) instead
 
 **Request Example:**
 ```javascript
@@ -124,7 +129,7 @@ const data = await response.json();
 
 **Endpoint:** `POST /v1/attendance/punch-out/:candidateId`
 
-**Description:** Record a punch-out for a candidate. Updates the active attendance record for the day.
+**Description:** Record a punch-out for a candidate. Updates the active attendance record for the day. Supports backdated attendance by providing `punchOutTime` parameter with a past date/time.
 
 **Permissions:** 
 - Candidate owner (the user who owns the candidate profile)
@@ -136,11 +141,16 @@ const data = await response.json();
 **Request Body:**
 ```json
 {
-  "punchOutTime": "2024-01-15T18:00:00.000Z",  // Optional: ISO 8601 date string. Defaults to current time if not provided
+  "punchOutTime": "2024-01-15T18:00:00.000Z",  // Optional: ISO 8601 date string. Defaults to current time if not provided. Can be a past date for backdated attendance
   "notes": "Completed daily tasks",              // Optional: Additional notes
   "timezone": "America/New_York"                // Optional: IANA timezone (e.g., 'America/New_York', 'Asia/Kolkata', 'UTC'). If not provided, uses timezone from punch-in record
 }
 ```
+
+**Backdated Attendance:**
+- You can provide a past date/time in `punchOutTime` to update backdated attendance
+- The system will find the active punch-in for that date (checks up to 3 days back for night shifts)
+- **Note**: For approval workflow, use the [Backdated Attendance Request API](./BACKDATED_ATTENDANCE_REQUEST_API.md) instead
 
 **Request Example:**
 ```javascript
@@ -684,6 +694,62 @@ const AttendanceButton = ({ candidateId }) => {
 
 export default AttendanceButton;
 ```
+
+---
+
+## Backdated Attendance
+
+### Direct Update (No Approval Required)
+
+You can update backdated attendance directly using the punch-in and punch-out APIs with time parameters:
+
+**For Backdated Attendance:**
+1. Use `POST /v1/attendance/punch-in/:candidateId` with `punchInTime` parameter (past date)
+2. Then use `POST /v1/attendance/punch-out/:candidateId` with `punchOutTime` parameter (past date)
+
+**Example:**
+```javascript
+// Step 1: Punch in for past date
+const punchInResponse = await fetch('/v1/attendance/punch-in/507f1f77bcf86cd799439011', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer <your-token>'
+  },
+  body: JSON.stringify({
+    punchInTime: '2024-01-15T09:00:00.000Z',  // Past date
+    timezone: 'Asia/Kolkata',
+    notes: 'Backdated punch in'
+  })
+});
+
+// Step 2: Punch out for past date
+const punchOutResponse = await fetch('/v1/attendance/punch-out/507f1f77bcf86cd799439011', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer <your-token>'
+  },
+  body: JSON.stringify({
+    punchOutTime: '2024-01-15T18:00:00.000Z',  // Past date
+    timezone: 'Asia/Kolkata',
+    notes: 'Backdated punch out'
+  })
+});
+```
+
+**When to use Direct Update:**
+- Admin directly correcting attendance
+- Candidate owner updating their own attendance
+- Immediate updates without approval workflow
+- Bulk corrections by admin
+
+**When to use Request System:**
+- Candidate needs to request approval for backdated attendance
+- Policy requires approval workflow
+- Audit trail needed for backdated entries
+
+**See also:** [Backdated Attendance Request API](./BACKDATED_ATTENDANCE_REQUEST_API.md) for approval workflow
 
 ---
 

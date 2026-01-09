@@ -11,6 +11,30 @@ This API allows administrators to assign leaves (casual, sick, or unpaid) to mul
   ```
 - **Access:** Admin only (role with `manageCandidates`)
 
+### Connection with Leave Request API
+
+**Two Ways to Assign Leaves:**
+
+1. **Direct Leave Assignment** (This API):
+   - Admin directly assigns leaves without request
+   - **Endpoint**: `POST /v1/attendance/leaves`
+   - **Use Case**: Admin-initiated leave assignment (bulk assignment, emergency leaves, etc.)
+
+2. **Leave Request System** (Alternative):
+   - Candidate creates a request → Admin approves → Leave automatically assigned
+   - **Endpoint**: `POST /v1/leave-requests/candidate/:candidateId` → `PATCH /v1/leave-requests/:requestId/approve`
+   - **Use Case**: Candidate-initiated leave requests with approval workflow
+
+**Both systems:**
+- Use the same underlying `assignLeavesToCandidates()` function
+- Create the same data structure:
+  - Add entries to `candidate.leaves[]` array
+  - Create `Attendance` records with `status: 'Leave'`
+- Validate the same leave limits
+- Support the same leave types: `casual`, `sick`, `unpaid`
+
+**See also:** [Leave Request API](./LEAVE_REQUEST_API.md) for candidate-initiated leave requests
+
 ---
 
 ## Data Model Notes

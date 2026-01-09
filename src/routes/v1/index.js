@@ -14,6 +14,8 @@ import recruiterActivityRoute from './recruiterActivity.route.js';
 import supportTicketRoute from './supportTicket.route.js';
 import holidayRoute from './holiday.route.js';
 import shiftRoute from './shift.route.js';
+import leaveRequestRoute from './leaveRequest.route.js';
+import backdatedAttendanceRequestRoute from './backdatedAttendanceRequest.route.js';
 import docsRoute from './docs.route.js';
 import config from '../../config/config.js';
 
@@ -79,6 +81,14 @@ const defaultRoutes = [
   {
     path: '/shifts',
     route: shiftRoute,
+  },
+  {
+    path: '/leave-requests',
+    route: leaveRequestRoute,
+  },
+  {
+    path: '/backdated-attendance-requests',
+    route: backdatedAttendanceRequestRoute,
   },
 ];
 
