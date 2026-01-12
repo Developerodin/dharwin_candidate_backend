@@ -18,6 +18,9 @@ router.post('/verify-email', validate(authValidation.verifyEmail), authControlle
 router.post('/send-candidate-invitation', validate(authValidation.sendCandidateInvitation), authController.sendCandidateInvitation);
 router.post('/register-supervisor', auth('manageUsers'), validate(authValidation.registerSupervisor), authController.registerSupervisor);
 router.post('/register-recruiter', auth('manageUsers'), validate(authValidation.registerRecruiter), authController.registerRecruiter);
+router.post('/register-user', auth('manageUsers'), validate(authValidation.registerUser), authController.registerUser);
+router.patch('/register-user/:userId', auth('manageUsers'), validate(authValidation.updateRegisteredUser), authController.updateRegisteredUser);
+router.delete('/register-user/:userId', auth('manageUsers'), validate(authValidation.deleteRegisteredUser), authController.deleteRegisteredUser);
 
 export default router;
 
@@ -415,4 +418,180 @@ export default router;
  *         description: Bad request - Invalid email, URL, or too many invitations
  *       "500":
  *         description: Internal server error
+ */
+
+/**
+ * @swagger
+ * /auth/register-user:
+ *   post:
+ *     summary: Register a new admin user (Admin only)
+ *     description: Allows an admin to register a new user with admin role. Email verification is automatically set to true. Navigation permissions structure can be included.
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - email
+ *               - password
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Full name of the user
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: Email address (must be unique)
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 minLength: 8
+ *                 description: Password must contain at least one letter and one number
+ *               phoneNumber:
+ *                 type: string
+ *                 pattern: '^[\+]?[1-9][\d]{0,15}$'
+ *                 description: Phone number (optional)
+ *               countryCode:
+ *                 type: string
+ *                 description: Country code (optional)
+ *               subRole:
+ *                 type: string
+ *                 description: Sub-role for the user (optional)
+ *               navigation:
+ *                 type: object
+ *                 description: Navigation permissions structure (optional)
+ *                 additionalProperties: true
+ *             example:
+ *               name: John Doe
+ *               email: john@example.com
+ *               password: password123
+ *               phoneNumber: "+1234567890"
+ *               countryCode: "+1"
+ *               subRole: "Senior Admin"
+ *               navigation:
+ *                 Dashboard: false
+ *                 ATS:
+ *                   Candidates:
+ *                     Candidates: false
+ *                     "Share Candidate Form": false
+ *                     "Track Attendance": false
+ *                   Jobs:
+ *                     "Manage Jobs": false
+ *                   Interviews:
+ *                     "Generate Meeting Link": false
+ *                     "Manage Meetings": false
+ *                 "Project management":
+ *                   "Manage Projects": false
+ *                   "Manage Tasks": false
+ *                 "Support Tickets": false
+ *                 Settings:
+ *                   Master:
+ *                     Jobs:
+ *                       "Manage Jobs Templates": false
+ *                     Attendance:
+ *                       "Manage Week Off": false
+ *                       "Holidays List": false
+ *                       "Assign Holidays": false
+ *                       "Manage Shifts": false
+ *                       "Assign Shift": false
+ *                       "Assign Leave": false
+ *                       "Leave Requests": false
+ *                       "Backdated Attendance": false
+ *                   Logs:
+ *                     "Login Logs": false
+ *                     "Recruiter Logs": false
+ *     responses:
+ *       "201":
+ *         description: User created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       "400":
+ *         $ref: '#/components/responses/DuplicateEmail'
+ *       "401":
+ *         $ref: '#/components/responses/Unauthorized'
+ *       "403":
+ *         $ref: '#/components/responses/Forbidden'
+ */
+
+/**
+ * @swagger
+ * /auth/register-user/{userId}:
+ *   patch:
+ *     summary: Update a registered admin user (Admin only)
+ *     description: Allows an admin to update a user registered via register-user endpoint. Email and password fields cannot be updated through this endpoint.
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID (MongoDB ObjectId)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Full name of the user
+ *               phoneNumber:
+ *                 type: string
+ *                 pattern: '^[\+]?[1-9][\d]{0,15}$'
+ *                 description: Phone number (optional)
+ *               countryCode:
+ *                 type: string
+ *                 description: Country code (optional)
+ *               subRole:
+ *                 type: string
+ *                 description: Sub-role for the user (optional)
+ *               isActive:
+ *                 type: boolean
+ *                 description: Active status of the user (optional, default: true)
+ *               navigation:
+ *                 type: object
+ *                 description: Navigation permissions structure (optional)
+ *                 additionalProperties: true
+ *             example:
+ *               name: John Doe Updated
+ *               phoneNumber: "+1987654321"
+ *               countryCode: "+1"
+ *               subRole: "Senior Admin"
+ *               isActive: true
+ *               navigation:
+ *                 Dashboard: true
+ *                 ATS:
+ *                   Candidates:
+ *                     Candidates: true
+ *                     "Share Candidate Form": false
+ *                     "Track Attendance": false
+ *     responses:
+ *       "200":
+ *         description: User updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       "400":
+ *         description: Bad request - Validation error
+ *       "401":
+ *         $ref: '#/components/responses/Unauthorized'
+ *       "403":
+ *         $ref: '#/components/responses/Forbidden'
+ *       "404":
+ *         $ref: '#/components/responses/NotFound'
  */

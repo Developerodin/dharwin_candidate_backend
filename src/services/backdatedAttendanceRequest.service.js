@@ -76,10 +76,16 @@ const createBackdatedAttendanceRequest = async (candidateId, attendanceEntries, 
     normalizedDates.add(dateKey);
 
     // Validate punch in
-    const punchIn = new Date(entry.punchIn);
+    let punchIn = new Date(entry.punchIn);
     if (isNaN(punchIn.getTime())) {
       throw new ApiError(httpStatus.BAD_REQUEST, `Attendance entry ${i + 1}: Invalid punchIn time: ${entry.punchIn}`);
     }
+
+    // Ensure punchIn is on the normalized date (combine date with punchIn time)
+    // Extract time components from punchIn and apply to normalized date
+    const punchInDate = new Date(normalizedDate);
+    punchInDate.setUTCHours(punchIn.getUTCHours(), punchIn.getUTCMinutes(), punchIn.getUTCSeconds(), punchIn.getUTCMilliseconds());
+    punchIn = punchInDate;
 
     // Validate punch out if provided
     let punchOut = null;
@@ -88,11 +94,36 @@ const createBackdatedAttendanceRequest = async (candidateId, attendanceEntries, 
       if (isNaN(punchOut.getTime())) {
         throw new ApiError(httpStatus.BAD_REQUEST, `Attendance entry ${i + 1}: Invalid punchOut time: ${entry.punchOut}`);
       }
+      
+      // Combine normalized date with punchOut time
+      const punchOutDate = new Date(normalizedDate);
+      punchOutDate.setUTCHours(punchOut.getUTCHours(), punchOut.getUTCMinutes(), punchOut.getUTCSeconds(), punchOut.getUTCMilliseconds());
+      punchOut = punchOutDate;
+      
+      // Handle night shifts: if punchOut time is earlier than punchIn time (within same day),
+      // it means the punchOut is on the next calendar day
       if (punchOut <= punchIn) {
-        throw new ApiError(
-          httpStatus.BAD_REQUEST,
-          `Attendance entry ${i + 1}: Punch out time must be after punch in time`
-        );
+        // Check if this is a night shift scenario
+        const punchInHour = punchIn.getUTCHours();
+        const punchOutHour = punchOut.getUTCHours();
+        
+        // Night shift detection:
+        // 1. If punchIn is PM (12-23) and punchOut is AM (0-11), it's definitely a night shift
+        // 2. Calculate hours difference when wrapping around midnight (e.g., 9 PM to 6 AM = 9 hours)
+        // 3. If the wrapped hours difference is reasonable (1-16 hours), it's a night shift
+        const hoursDifference = (punchOutHour + 24 - punchInHour) % 24;
+        const isNightShift = (punchInHour >= 12 && punchOutHour < 12) || (hoursDifference >= 1 && hoursDifference <= 16);
+        
+        if (isNightShift) {
+          // This is a night shift - punchOut is on the next day
+          punchOut.setUTCDate(punchOut.getUTCDate() + 1);
+        } else {
+          // Not a night shift - this is an error
+          throw new ApiError(
+            httpStatus.BAD_REQUEST,
+            `Attendance entry ${i + 1}: Punch out time must be after punch in time`
+          );
+        }
       }
     }
 
@@ -490,10 +521,16 @@ const updateBackdatedAttendanceRequest = async (requestId, updateData, user) => 
       normalizedDates.add(dateKey);
 
       // Validate punch in
-      const punchIn = new Date(entry.punchIn);
+      let punchIn = new Date(entry.punchIn);
       if (isNaN(punchIn.getTime())) {
         throw new ApiError(httpStatus.BAD_REQUEST, `Attendance entry ${i + 1}: Invalid punchIn time: ${entry.punchIn}`);
       }
+
+      // Ensure punchIn is on the normalized date (combine date with punchIn time)
+      // Extract time components from punchIn and apply to normalized date
+      const punchInDate = new Date(normalizedDate);
+      punchInDate.setUTCHours(punchIn.getUTCHours(), punchIn.getUTCMinutes(), punchIn.getUTCSeconds(), punchIn.getUTCMilliseconds());
+      punchIn = punchInDate;
 
       // Validate punch out if provided
       let punchOut = null;
@@ -502,11 +539,36 @@ const updateBackdatedAttendanceRequest = async (requestId, updateData, user) => 
         if (isNaN(punchOut.getTime())) {
           throw new ApiError(httpStatus.BAD_REQUEST, `Attendance entry ${i + 1}: Invalid punchOut time: ${entry.punchOut}`);
         }
+        
+        // Combine normalized date with punchOut time
+        const punchOutDate = new Date(normalizedDate);
+        punchOutDate.setUTCHours(punchOut.getUTCHours(), punchOut.getUTCMinutes(), punchOut.getUTCSeconds(), punchOut.getUTCMilliseconds());
+        punchOut = punchOutDate;
+        
+        // Handle night shifts: if punchOut time is earlier than punchIn time (within same day),
+        // it means the punchOut is on the next calendar day
         if (punchOut <= punchIn) {
-          throw new ApiError(
-            httpStatus.BAD_REQUEST,
-            `Attendance entry ${i + 1}: Punch out time must be after punch in time`
-          );
+          // Check if this is a night shift scenario
+          const punchInHour = punchIn.getUTCHours();
+          const punchOutHour = punchOut.getUTCHours();
+          
+          // Night shift detection:
+          // 1. If punchIn is PM (12-23) and punchOut is AM (0-11), it's definitely a night shift
+          // 2. Calculate hours difference when wrapping around midnight (e.g., 9 PM to 6 AM = 9 hours)
+          // 3. If the wrapped hours difference is reasonable (1-16 hours), it's a night shift
+          const hoursDifference = (punchOutHour + 24 - punchInHour) % 24;
+          const isNightShift = (punchInHour >= 12 && punchOutHour < 12) || (hoursDifference >= 1 && hoursDifference <= 16);
+          
+          if (isNightShift) {
+            // This is a night shift - punchOut is on the next day
+            punchOut.setUTCDate(punchOut.getUTCDate() + 1);
+          } else {
+            // Not a night shift - this is an error
+            throw new ApiError(
+              httpStatus.BAD_REQUEST,
+              `Attendance entry ${i + 1}: Punch out time must be after punch in time`
+            );
+          }
         }
       }
 

@@ -2022,6 +2022,449 @@ Dharwin Team`;
   await sendEmail(to, subject, text, html);
 };
 
+/**
+ * Send admin registration email with login credentials
+ * @param {string} to
+ * @param {string} name
+ * @param {string} email
+ * @param {string} password
+ * @returns {Promise}
+ */
+const sendAdminRegistrationEmail = async (to, name, email, password) => {
+  const subject = 'Welcome to Dharwin - Your Admin Account Credentials';
+  const frontendUrl = config.frontendUrl || 'https://main.d17v4yz0vw03r0.amplifyapp.com';
+  const loginUrl = `${frontendUrl}`;
+  
+  const text = `Dear ${name},
+
+Welcome to Dharwin Business Solutions! Your admin account has been successfully created.
+
+Your login credentials are:
+Email: ${email}
+Password: ${password}
+
+You can now log in to the platform using these credentials at: ${loginUrl}
+
+IMPORTANT SECURITY NOTES:
+- Please change your password immediately after your first login
+- Keep your credentials secure and do not share them with anyone
+- If you did not request this account, please contact our support team immediately
+
+Best regards,
+Dharwin Business Solutions Team`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Welcome to Dharwin - Admin Account</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+                line-height: 1.6;
+                color: #1a202c;
+                background-color: #f8fafc;
+                margin: 0;
+                padding: 20px;
+            }
+            
+            .email-container {
+                max-width: 600px;
+                margin: 0 auto;
+                background-color: #ffffff;
+                border-radius: 12px;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+                overflow: hidden;
+            }
+            
+            .header {
+                background: linear-gradient(135deg, #093464 0%, #0d4a7a 100%);
+                padding: 40px 30px;
+                text-align: center;
+                position: relative;
+            }
+            
+            .header::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+                opacity: 0.3;
+            }
+            
+            .logo {
+                position: relative;
+                z-index: 1;
+                margin-bottom: 8px;
+            }
+            
+            .logo-image {
+                max-height: 50px;
+                max-width: 180px;
+                width: auto;
+                height: auto;
+            }
+            
+            .tagline {
+                color: rgba(255, 255, 255, 0.9);
+                font-size: 16px;
+                font-weight: 400;
+                position: relative;
+                z-index: 1;
+            }
+            
+            .content {
+                padding: 40px;
+            }
+            
+            .welcome-section {
+                text-align: center;
+                margin-bottom: 40px;
+            }
+            
+            .welcome-icon {
+                width: 80px;
+                height: 80px;
+                background: linear-gradient(135deg, #36af4c 0%, #2d8f3f 100%);
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 20px;
+                font-size: 36px;
+                color: white;
+                box-shadow: 0 8px 25px rgba(54, 175, 76, 0.3);
+            }
+            
+            h1 {
+                color: #1a202c;
+                font-size: 28px;
+                font-weight: 700;
+                margin-bottom: 16px;
+                letter-spacing: -0.5px;
+            }
+            
+            .subtitle {
+                color: #4a5568;
+                font-size: 18px;
+                margin-bottom: 30px;
+            }
+            
+            .credentials-box {
+                background: linear-gradient(135deg, rgba(9, 52, 100, 0.05) 0%, rgba(13, 74, 122, 0.05) 100%);
+                border: 2px solid #093464;
+                border-radius: 12px;
+                padding: 30px;
+                margin: 40px 0;
+                text-align: center;
+            }
+            
+            .credentials-title {
+                color: #093464;
+                font-size: 20px;
+                font-weight: 700;
+                margin-bottom: 24px;
+            }
+            
+            .credential-item {
+                background-color: #ffffff;
+                border-radius: 8px;
+                padding: 20px;
+                margin: 16px 0;
+                border-left: 4px solid #36af4c;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+                text-align: left;
+            }
+            
+            .credential-label {
+                color: #4a5568;
+                font-size: 14px;
+                font-weight: 600;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .credential-value {
+                color: #1a202c;
+                font-size: 18px;
+                font-weight: 700;
+                font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+                word-break: break-all;
+            }
+            
+            .cta-section {
+                text-align: center;
+                margin: 40px 0;
+            }
+            
+            .cta-section a {
+                color: #fff;
+            }
+            
+            .button {
+                display: inline-block;
+                padding: 18px 40px;
+                background: linear-gradient(135deg, #36af4c 0%, #2d8f3f 100%);
+                color: #ffffff;
+                text-decoration: none;
+                border-radius: 8px;
+                font-weight: 600;
+                font-size: 16px;
+                transition: all 0.3s ease;
+                box-shadow: 0 4px 14px rgba(54, 175, 76, 0.3);
+                border: none;
+                cursor: pointer;
+            }
+            
+            .button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 8px 25px rgba(54, 175, 76, 0.4);
+                background: linear-gradient(135deg, #2d8f3f 0%, #27a745 100%);
+            }
+            
+            .security-note {
+                background-color: #fef2f2;
+                border: 2px solid #fecaca;
+                border-radius: 8px;
+                padding: 20px;
+                margin: 30px 0;
+                text-align: center;
+            }
+            
+            .security-note-title {
+                color: #dc2626;
+                font-weight: 700;
+                font-size: 16px;
+                margin-bottom: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+            }
+            
+            .security-note-text {
+                color: #991b1b;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+            
+            .info-section {
+                background-color: #f8fafc;
+                border-radius: 12px;
+                padding: 30px;
+                margin: 40px 0;
+                border: 1px solid #e2e8f0;
+            }
+            
+            .info-title {
+                color: #093464;
+                font-size: 20px;
+                font-weight: 600;
+                margin-bottom: 20px;
+                text-align: center;
+            }
+            
+            .info-item {
+                display: flex;
+                align-items: flex-start;
+                margin: 16px 0;
+                padding: 16px;
+                background-color: white;
+                border-radius: 8px;
+                border-left: 4px solid #36af4c;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            }
+            
+            .info-icon {
+                width: 24px;
+                height: 24px;
+                margin-right: 12px;
+                flex-shrink: 0;
+                font-size: 20px;
+            }
+            
+            .info-content {
+                flex: 1;
+            }
+            
+            .info-text {
+                color: #4a5568;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+            
+            .footer {
+                background-color: #f8fafc;
+                padding: 30px 40px;
+                border-top: 1px solid #e2e8f0;
+                text-align: center;
+            }
+            
+            .footer p {
+                color: #64748b;
+                font-size: 14px;
+                margin-bottom: 8px;
+            }
+            
+            .footer a {
+                color: #093464;
+                text-decoration: none;
+                font-weight: 500;
+            }
+            
+            .footer a:hover {
+                color: #36af4c;
+                text-decoration: underline;
+            }
+            
+            @media (max-width: 640px) {
+                .email-container {
+                    margin: 10px;
+                    border-radius: 8px;
+                }
+                
+                .header {
+                    padding: 30px 20px;
+                }
+                
+                .content {
+                    padding: 30px 20px;
+                }
+                
+                .footer {
+                    padding: 20px;
+                }
+                
+                .logo-image {
+                    max-height: 40px;
+                    max-width: 140px;
+                }
+                
+                h1 {
+                    font-size: 24px;
+                }
+                
+                .subtitle {
+                    font-size: 16px;
+                }
+                
+                .button {
+                    padding: 16px 32px;
+                    font-size: 15px;
+                }
+                
+                .credentials-box {
+                    padding: 20px;
+                }
+                
+                .credential-item {
+                    padding: 16px;
+                }
+                
+                .info-section {
+                    padding: 20px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="email-container">
+            <div class="header">
+                <div class="logo">
+                    <img src="https://dharwinone.com/assets/images/company-logos/logo.jpeg" alt="Dharwin" class="logo-image">
+                </div>
+                <div class="tagline">Admin Account Created</div>
+            </div>
+            
+            <div class="content">
+                <div class="welcome-section">
+                    <div class="welcome-icon">👋</div>
+                    <h1>Welcome, ${name}!</h1>
+                    <p class="subtitle">Your admin account has been successfully created</p>
+                </div>
+                
+                <div class="credentials-box">
+                    <div class="credentials-title">🔐 Your Login Credentials</div>
+                    
+                    <div class="credential-item">
+                        <div class="credential-label">Email Address</div>
+                        <div class="credential-value">${email}</div>
+                    </div>
+                    
+                    <div class="credential-item">
+                        <div class="credential-label">Password</div>
+                        <div class="credential-value">${password}</div>
+                    </div>
+                </div>
+                
+                <div class="cta-section">
+                    <a href="${loginUrl}" class="button">Login to Your Account</a>
+                </div>
+                
+                <div class="security-note">
+                    <div class="security-note-title">
+                        🔒 Important Security Information
+                    </div>
+                    <div class="security-note-text">
+                        <strong>Please change your password immediately</strong> after your first login for security purposes. Keep your credentials secure and do not share them with anyone.
+                    </div>
+                </div>
+                
+                <div class="info-section">
+                    <h3 class="info-title">📋 Getting Started</h3>
+                    
+                    <div class="info-item">
+                        <div class="info-icon">1️⃣</div>
+                        <div class="info-content">
+                            <div class="info-text">Use the credentials above to log in to your admin account</div>
+                        </div>
+                    </div>
+                    
+                    <div class="info-item">
+                        <div class="info-icon">2️⃣</div>
+                        <div class="info-content">
+                            <div class="info-text">Change your password immediately after first login</div>
+                        </div>
+                    </div>
+                    
+                    <div class="info-item">
+                        <div class="info-icon">3️⃣</div>
+                        <div class="info-content">
+                            <div class="info-text">Explore the admin dashboard and configure your account settings</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <p style="color: #4a5568; font-size: 16px; margin: 30px 0; text-align: center;">
+                    If you have any questions or need assistance, please don't hesitate to contact our support team.
+                </p>
+            </div>
+            
+            <div class="footer">
+                <p>This email was sent to you because an admin account was created for you.</p>
+                <p>If you did not request this account, please contact our support team immediately.</p>
+                <p>© 2025 Dharwin Business Solutions. All rights reserved.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+  `;
+  
+  await sendEmail(to, subject, text, html);
+};
+
 export {
   transport,
   sendEmail,
@@ -2030,5 +2473,6 @@ export {
   sendCandidateInvitationEmail,
   sendCandidateProfileShareEmail,
   sendMeetingInvitationEmail,
+  sendAdminRegistrationEmail,
 };
 

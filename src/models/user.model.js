@@ -66,6 +66,19 @@ const userSchema = mongoose.Schema(
         return this.role === 'user';
       },
     },
+    navigation: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+    subRole: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
   },
   {
     timestamps: true,

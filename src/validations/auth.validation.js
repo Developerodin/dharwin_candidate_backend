@@ -110,5 +110,46 @@ const registerRecruiter = {
   }),
 };
 
-export { register, login, logout, refreshTokens, forgotPassword, resetPassword, verifyEmail, sendCandidateInvitation, registerSupervisor, registerRecruiter };
+const registerUser = {
+  body: Joi.object().keys({
+    email: Joi.string().required().email(),
+    password: Joi.string().required().custom(password),
+    name: Joi.string().required(),
+    phoneNumber: Joi.string().optional().pattern(/^[\+]?[1-9][\d]{0,15}$/).messages({
+      'string.pattern.base': 'Phone number must be a valid mobile phone number'
+    }),
+    countryCode: Joi.string().optional().trim(),
+    subRole: Joi.string().optional().trim(),
+    navigation: Joi.object().unknown(true).optional(),
+  }),
+};
+
+const updateRegisteredUser = {
+  params: Joi.object().keys({
+    userId: Joi.string().required().custom(objectId),
+  }),
+  body: Joi.object()
+    .keys({
+      name: Joi.string().optional(),
+      phoneNumber: Joi.string().optional().pattern(/^[\+]?[1-9][\d]{0,15}$/).messages({
+        'string.pattern.base': 'Phone number must be a valid mobile phone number'
+      }),
+      countryCode: Joi.string().optional().trim(),
+      subRole: Joi.string().optional().trim(),
+      isActive: Joi.boolean().optional(),
+      navigation: Joi.object().unknown(true).optional(),
+    })
+    .min(1)
+    .messages({
+      'object.min': 'At least one field must be provided for update'
+    }),
+};
+
+const deleteRegisteredUser = {
+  params: Joi.object().keys({
+    userId: Joi.string().required().custom(objectId),
+  }),
+};
+
+export { register, login, logout, refreshTokens, forgotPassword, resetPassword, verifyEmail, sendCandidateInvitation, registerSupervisor, registerRecruiter, registerUser, updateRegisteredUser, deleteRegisteredUser };
 

@@ -1,10 +1,11 @@
 import httpStatus from 'http-status';
 import catchAsync from '../utils/catchAsync.js';
-import { createUser, getUserByEmail } from '../services/user.service.js';
+import logger from '../config/logger.js';
+import { createUser, getUserByEmail, updateUserById, deleteUserById } from '../services/user.service.js';
 import { createCandidate } from '../services/candidate.service.js';
 import { generateAuthTokens,generateResetPasswordToken,generateVerifyEmailToken } from '../services/token.service.js';
 import { loginUserWithEmailAndPassword,logout as logout2,refreshAuth,resetPassword as resetPassword2,verifyEmail as verifyEmail2  } from '../services/auth.service.js';
-import { sendResetPasswordEmail,sendVerificationEmail as sendVerificationEmail2,sendCandidateInvitationEmail  } from '../services/email.service.js';
+import { sendResetPasswordEmail,sendVerificationEmail as sendVerificationEmail2,sendCandidateInvitationEmail,sendAdminRegistrationEmail  } from '../services/email.service.js';
 import { createLoginLog } from '../services/loginLog.service.js';
 
 // Helper function to get IP address from request
@@ -175,6 +176,52 @@ const registerRecruiter = catchAsync(async (req, res) => {
   res.status(httpStatus.CREATED).send({ user });
 });
 
+const registerUser = catchAsync(async (req, res) => {
+  const userData = {
+    ...req.body,
+    role: 'admin',
+    isEmailVerified: true,
+  };
+  
+  // Store navigation structure if provided
+  if (req.body.navigation) {
+    userData.navigation = req.body.navigation;
+  }
+  
+  const user = await createUser(userData);
+  
+  // Send email with login credentials
+  try {
+    await sendAdminRegistrationEmail(user.email, user.name, user.email, req.body.password);
+  } catch (emailError) {
+    // Log error but don't fail the registration
+    logger.error('Failed to send admin registration email:', emailError.message);
+  }
+  
+  res.status(httpStatus.CREATED).send({ user });
+});
+
+const updateRegisteredUser = catchAsync(async (req, res) => {
+  const { userId } = req.params;
+  
+  // Exclude email and password from update
+  const updateData = { ...req.body };
+  delete updateData.email;
+  delete updateData.password;
+  
+  const user = await updateUserById(userId, updateData);
+  
+  res.send(user);
+});
+
+const deleteRegisteredUser = catchAsync(async (req, res) => {
+  const { userId } = req.params;
+  
+  await deleteUserById(userId);
+  
+  res.status(httpStatus.NO_CONTENT).send();
+});
+
 export {
   register,
   login,
@@ -187,4 +234,7 @@ export {
   sendCandidateInvitation,
   registerSupervisor,
   registerRecruiter,
+  registerUser,
+  updateRegisteredUser,
+  deleteRegisteredUser,
 };

@@ -20,6 +20,14 @@ const loginUserWithEmailAndPassword = async (email, password) => {
     throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect email or password');
   }
   
+  // Check if user is active
+  if (user.isActive === false) {
+    throw new ApiError(
+      httpStatus.FORBIDDEN,
+      'Your account has been deactivated. Please contact your administrator for assistance.'
+    );
+  }
+  
   // Check if email is verified
   // Allow supervisors and recruiters to login without email verification (they are created by admin)
   const allowedRolesWithoutVerification = ['supervisor', 'recruiter', 'admin'];
