@@ -75,6 +75,11 @@ const userSchema = mongoose.Schema(
       trim: true,
       default: null,
     },
+    subRoleId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'SubRole',
+      default: null,
+    },
     isActive: {
       type: Boolean,
       default: true,

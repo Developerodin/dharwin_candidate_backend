@@ -2,6 +2,7 @@ import httpStatus from 'http-status';
 import catchAsync from '../utils/catchAsync.js';
 import logger from '../config/logger.js';
 import { createUser, getUserByEmail, updateUserById, deleteUserById } from '../services/user.service.js';
+import { getSubRoleById } from '../services/subRole.service.js';
 import { createCandidate } from '../services/candidate.service.js';
 import { generateAuthTokens,generateResetPasswordToken,generateVerifyEmailToken } from '../services/token.service.js';
 import { loginUserWithEmailAndPassword,logout as logout2,refreshAuth,resetPassword as resetPassword2,verifyEmail as verifyEmail2  } from '../services/auth.service.js';
@@ -183,12 +184,35 @@ const registerUser = catchAsync(async (req, res) => {
     isEmailVerified: true,
   };
   
-  // Store navigation structure if provided
-  if (req.body.navigation) {
+  // If subRoleId is provided, fetch the subRole and use its navigation structure
+  if (req.body.subRoleId) {
+    const subRole = await getSubRoleById(req.body.subRoleId);
+    if (!subRole) {
+      return res.status(httpStatus.BAD_REQUEST).send({ 
+        code: 400, 
+        message: 'SubRole not found' 
+      });
+    }
+    if (!subRole.isActive) {
+      return res.status(httpStatus.BAD_REQUEST).send({ 
+        code: 400, 
+        message: 'SubRole is not active' 
+      });
+    }
+    userData.subRoleId = req.body.subRoleId;
+    userData.subRole = subRole.name;
+    userData.navigation = subRole.navigation;
+  } else if (req.body.navigation) {
+    // Store navigation structure if provided directly
     userData.navigation = req.body.navigation;
   }
   
   const user = await createUser(userData);
+  
+  // Populate subRoleId if it exists
+  if (user.subRoleId) {
+    await user.populate({ path: 'subRoleId', select: 'name description navigation' });
+  }
   
   // Send email with login credentials
   try {
@@ -209,7 +233,39 @@ const updateRegisteredUser = catchAsync(async (req, res) => {
   delete updateData.email;
   delete updateData.password;
   
+  // If subRoleId is provided, fetch the subRole and use its navigation structure
+  if (req.body.subRoleId !== undefined) {
+    if (req.body.subRoleId === null) {
+      // Allow clearing the subRoleId
+      updateData.subRoleId = null;
+      updateData.subRole = null;
+      updateData.navigation = null;
+    } else {
+      const subRole = await getSubRoleById(req.body.subRoleId);
+      if (!subRole) {
+        return res.status(httpStatus.BAD_REQUEST).send({ 
+          code: 400, 
+          message: 'SubRole not found' 
+        });
+      }
+      if (!subRole.isActive) {
+        return res.status(httpStatus.BAD_REQUEST).send({ 
+          code: 400, 
+          message: 'SubRole is not active' 
+        });
+      }
+      updateData.subRoleId = req.body.subRoleId;
+      updateData.subRole = subRole.name;
+      updateData.navigation = subRole.navigation;
+    }
+  }
+  
   const user = await updateUserById(userId, updateData);
+  
+  // Populate subRoleId if it exists
+  if (user.subRoleId) {
+    await user.populate({ path: 'subRoleId', select: 'name description navigation' });
+  }
   
   res.send(user);
 });

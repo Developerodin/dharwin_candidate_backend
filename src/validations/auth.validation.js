@@ -120,8 +120,17 @@ const registerUser = {
     }),
     countryCode: Joi.string().optional().trim(),
     subRole: Joi.string().optional().trim(),
+    subRoleId: Joi.string().custom(objectId).optional(),
     navigation: Joi.object().unknown(true).optional(),
-  }),
+  }).custom((value, helpers) => {
+    // If both subRoleId and navigation are provided, throw error
+    if (value.subRoleId && value.navigation) {
+      return helpers.error('object.custom', {
+        message: 'Cannot provide both subRoleId and navigation. Use subRoleId to assign a subRole, or navigation to set custom permissions.'
+      });
+    }
+    return value;
+  }, 'custom validation'),
 };
 
 const updateRegisteredUser = {
@@ -136,13 +145,23 @@ const updateRegisteredUser = {
       }),
       countryCode: Joi.string().optional().trim(),
       subRole: Joi.string().optional().trim(),
+      subRoleId: Joi.string().custom(objectId).optional().allow(null),
       isActive: Joi.boolean().optional(),
       navigation: Joi.object().unknown(true).optional(),
     })
     .min(1)
     .messages({
       'object.min': 'At least one field must be provided for update'
-    }),
+    })
+    .custom((value, helpers) => {
+      // If both subRoleId and navigation are provided, throw error
+      if (value.subRoleId !== undefined && value.navigation) {
+        return helpers.error('object.custom', {
+          message: 'Cannot provide both subRoleId and navigation. Use subRoleId to assign a subRole, or navigation to set custom permissions.'
+        });
+      }
+      return value;
+    }, 'custom validation'),
 };
 
 const deleteRegisteredUser = {

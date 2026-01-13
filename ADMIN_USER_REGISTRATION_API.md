@@ -40,6 +40,7 @@ Content-Type: application/json
 | `phoneNumber` | string | No | Phone number (must match pattern: `^[\+]?[1-9][\d]{0,15}$`) |
 | `countryCode` | string | No | Country code |
 | `subRole` | string | No | Sub-role for the user (optional) |
+| `subRoleId` | string | No | Sub-role ID to assign (optional, cannot be used with navigation) |
 | `navigation` | object | No | Navigation permissions structure (nested object with boolean values) |
 
 **Navigation Structure:**
@@ -63,12 +64,34 @@ The navigation object is a nested structure where each key represents a feature 
     "Dashboard": false,
     "ATS": {
       "Candidates": {
-        "Candidates": false,
+        "Candidates": {
+          "Export Candidates": false,
+          "Add Candidate": false,
+          "Actions": {
+            "View Details": false,
+            "Edit Candidate": false,
+            "View Documents": false,
+            "Upload Salary Slip": false,
+            "Share Candidate": false,
+            "View Attendance": false,
+            "Add Note": false,
+            "Add Feedback": false,
+            "Delete Candidate": false
+          }
+        },
         "Share Candidate Form": false,
         "Track Attendance": false
       },
       "Jobs": {
-        "Manage Jobs": false
+        "Manage Jobs": {
+          "Create Job": false,
+          "Export Excel": false,
+          "Actions": {
+            "Edit Job": false,
+            "View Job": false,
+            "Delete Job": false
+          }
+        }
       },
       "Interviews": {
         "Generate Meeting Link": false,
@@ -76,14 +99,38 @@ The navigation object is a nested structure where each key represents a feature 
       }
     },
     "Project management": {
-      "Manage Projects": false,
-      "Manage Tasks": false
+      "Manage Projects": {
+        "New Project": false,
+        "View Project": false,
+        "Edit Project": false,
+        "Delete Project": false
+      },
+      "Manage Tasks": {
+        "New Board": false,
+        "Add Task": false,
+        "View Task": false,
+        "Edit Task": false,
+        "Delete Task": false
+      }
     },
-    "Support Tickets": false,
+    "Support Tickets": {
+      "Create Ticket": false,
+      "Actions": {
+        "View Details": false,
+        "Delete Ticket": false
+      }
+    },
     "Settings": {
       "Master": {
         "Jobs": {
-          "Manage Jobs Templates": false
+          "Manage Jobs Templates": {
+            "Create Template": false,
+            "Actions": {
+              "View Template": false,
+              "Edit Template": false,
+              "Delete Template": false
+            }
+          }
         },
         "Attendance": {
           "Manage Week Off": false,
@@ -99,6 +146,10 @@ The navigation object is a nested structure where each key represents a feature 
       "Logs": {
         "Login Logs": false,
         "Recruiter Logs": false
+      },
+      "RBAC": {
+        "Roles": false,
+        "Manage Roles & Permissions": false
       }
     }
   }
@@ -122,12 +173,34 @@ The navigation object is a nested structure where each key represents a feature 
       "Dashboard": false,
       "ATS": {
         "Candidates": {
-          "Candidates": false,
+          "Candidates": {
+            "Export Candidates": false,
+            "Add Candidate": false,
+            "Actions": {
+              "View Details": false,
+              "Edit Candidate": false,
+              "View Documents": false,
+              "Upload Salary Slip": false,
+              "Share Candidate": false,
+              "View Attendance": false,
+              "Add Note": false,
+              "Add Feedback": false,
+              "Delete Candidate": false
+            }
+          },
           "Share Candidate Form": false,
           "Track Attendance": false
         },
         "Jobs": {
-          "Manage Jobs": false
+          "Manage Jobs": {
+            "Create Job": false,
+            "Export Excel": false,
+            "Actions": {
+              "Edit Job": false,
+              "View Job": false,
+              "Delete Job": false
+            }
+          }
         },
         "Interviews": {
           "Generate Meeting Link": false,
@@ -135,14 +208,38 @@ The navigation object is a nested structure where each key represents a feature 
         }
       },
       "Project management": {
-        "Manage Projects": false,
-        "Manage Tasks": false
+        "Manage Projects": {
+          "New Project": false,
+          "View Project": false,
+          "Edit Project": false,
+          "Delete Project": false
+        },
+        "Manage Tasks": {
+          "New Board": false,
+          "Add Task": false,
+          "View Task": false,
+          "Edit Task": false,
+          "Delete Task": false
+        }
       },
-      "Support Tickets": false,
+      "Support Tickets": {
+        "Create Ticket": false,
+        "Actions": {
+          "View Details": false,
+          "Delete Ticket": false
+        }
+      },
       "Settings": {
         "Master": {
           "Jobs": {
-            "Manage Jobs Templates": false
+            "Manage Jobs Templates": {
+              "Create Template": false,
+              "Actions": {
+                "View Template": false,
+                "Edit Template": false,
+                "Delete Template": false
+              }
+            }
           },
           "Attendance": {
             "Manage Week Off": false,
@@ -197,12 +294,34 @@ curl -X POST "http://localhost:3000/v1/auth/register-user" \
       "Dashboard": true,
       "ATS": {
         "Candidates": {
-          "Candidates": true,
+          "Candidates": {
+            "Export Candidates": true,
+            "Add Candidate": true,
+            "Actions": {
+              "View Details": true,
+              "Edit Candidate": true,
+              "View Documents": true,
+              "Upload Salary Slip": true,
+              "Share Candidate": true,
+              "View Attendance": true,
+              "Add Note": true,
+              "Add Feedback": true,
+              "Delete Candidate": true
+            }
+          },
           "Share Candidate Form": false,
           "Track Attendance": false
         },
         "Jobs": {
-          "Manage Jobs": true
+          "Manage Jobs": {
+            "Create Job": true,
+            "Export Excel": true,
+            "Actions": {
+              "Edit Job": true,
+              "View Job": true,
+              "Delete Job": true
+            }
+          }
         },
         "Interviews": {
           "Generate Meeting Link": true,
@@ -210,14 +329,38 @@ curl -X POST "http://localhost:3000/v1/auth/register-user" \
         }
       },
       "Project management": {
-        "Manage Projects": false,
-        "Manage Tasks": false
+        "Manage Projects": {
+          "New Project": false,
+          "View Project": false,
+          "Edit Project": false,
+          "Delete Project": false
+        },
+        "Manage Tasks": {
+          "New Board": false,
+          "Add Task": false,
+          "View Task": false,
+          "Edit Task": false,
+          "Delete Task": false
+        }
       },
-      "Support Tickets": true,
+      "Support Tickets": {
+        "Create Ticket": true,
+        "Actions": {
+          "View Details": true,
+          "Delete Ticket": true
+        }
+      },
       "Settings": {
         "Master": {
           "Jobs": {
-            "Manage Jobs Templates": false
+            "Manage Jobs Templates": {
+              "Create Template": false,
+              "Actions": {
+                "View Template": false,
+                "Edit Template": false,
+                "Delete Template": false
+              }
+            }
           },
           "Attendance": {
             "Manage Week Off": false,
@@ -363,12 +506,34 @@ async function registerAdminUser() {
           Dashboard: true,
           ATS: {
             Candidates: {
-              Candidates: true,
+              Candidates: {
+                'Export Candidates': true,
+                'Add Candidate': true,
+                Actions: {
+                  'View Details': true,
+                  'Edit Candidate': true,
+                  'View Documents': true,
+                  'Upload Salary Slip': true,
+                  'Share Candidate': true,
+                  'View Attendance': true,
+                  'Add Note': true,
+                  'Add Feedback': true,
+                  'Delete Candidate': true
+                }
+              },
               'Share Candidate Form': false,
               'Track Attendance': false
             },
             Jobs: {
-              'Manage Jobs': true
+              'Manage Jobs': {
+                'Create Job': true,
+                'Export Excel': true,
+                Actions: {
+                  'Edit Job': true,
+                  'View Job': true,
+                  'Delete Job': true
+                }
+              }
             },
             Interviews: {
               'Generate Meeting Link': true,
@@ -376,14 +541,38 @@ async function registerAdminUser() {
             }
           },
           'Project management': {
-            'Manage Projects': false,
-            'Manage Tasks': false
+            'Manage Projects': {
+              'New Project': false,
+              'View Project': false,
+              'Edit Project': false,
+              'Delete Project': false
+            },
+            'Manage Tasks': {
+              'New Board': false,
+              'Add Task': false,
+              'View Task': false,
+              'Edit Task': false,
+              'Delete Task': false
+            }
           },
-          'Support Tickets': true,
+          'Support Tickets': {
+            'Create Ticket': true,
+            Actions: {
+              'View Details': true,
+              'Delete Ticket': true
+            }
+          },
           Settings: {
             Master: {
               Jobs: {
-                'Manage Jobs Templates': false
+                'Manage Jobs Templates': {
+                  'Create Template': false,
+                  Actions: {
+                    'View Template': false,
+                    'Edit Template': false,
+                    'Delete Template': false
+                  }
+                }
               },
               Attendance: {
                 'Manage Week Off': false,
@@ -443,12 +632,34 @@ payload = {
         'Dashboard': True,
         'ATS': {
             'Candidates': {
-                'Candidates': True,
+                'Candidates': {
+                    'Export Candidates': True,
+                    'Add Candidate': True,
+                    'Actions': {
+                        'View Details': True,
+                        'Edit Candidate': True,
+                        'View Documents': True,
+                        'Upload Salary Slip': True,
+                        'Share Candidate': True,
+                        'View Attendance': True,
+                        'Add Note': True,
+                        'Add Feedback': True,
+                        'Delete Candidate': True
+                    }
+                },
                 'Share Candidate Form': False,
                 'Track Attendance': False
             },
             'Jobs': {
-                'Manage Jobs': True
+                'Manage Jobs': {
+                    'Create Job': True,
+                    'Export Excel': True,
+                    'Actions': {
+                        'Edit Job': True,
+                        'View Job': True,
+                        'Delete Job': True
+                    }
+                }
             },
             'Interviews': {
                 'Generate Meeting Link': True,
@@ -456,14 +667,38 @@ payload = {
             }
         },
         'Project management': {
-            'Manage Projects': False,
-            'Manage Tasks': False
+            'Manage Projects': {
+                'New Project': False,
+                'View Project': False,
+                'Edit Project': False,
+                'Delete Project': False
+            },
+            'Manage Tasks': {
+                'New Board': False,
+                'Add Task': False,
+                'View Task': False,
+                'Edit Task': False,
+                'Delete Task': False
+            }
         },
-        'Support Tickets': True,
+        'Support Tickets': {
+            'Create Ticket': True,
+            'Actions': {
+                'View Details': True,
+                'Delete Ticket': True
+            }
+        },
         'Settings': {
             'Master': {
                 'Jobs': {
-                    'Manage Jobs Templates': False
+                    'Manage Jobs Templates': {
+                        'Create Template': False,
+                        'Actions': {
+                            'View Template': False,
+                            'Edit Template': False,
+                            'Delete Template': False
+                        }
+                    }
                 },
                 'Attendance': {
                     'Manage Week Off': False,
@@ -542,7 +777,21 @@ POST /v1/auth/register-user
     "Dashboard": true,
     "ATS": {
       "Candidates": {
-        "Candidates": true
+        "Candidates": {
+          "Export Candidates": true,
+          "Add Candidate": true,
+          "Actions": {
+            "View Details": true,
+            "Edit Candidate": true,
+            "View Documents": true,
+            "Upload Salary Slip": true,
+            "Share Candidate": true,
+            "View Attendance": true,
+            "Add Note": true,
+            "Add Feedback": true,
+            "Delete Candidate": true
+          }
+        }
       }
     }
   }
@@ -575,6 +824,7 @@ POST /v1/auth/register-user
 | `phoneNumber` | string | No | Phone number (must match pattern: `^[\+]?[1-9][\d]{0,15}$`) |
 | `countryCode` | string | No | Country code |
 | `subRole` | string | No | Sub-role for the user |
+| `subRoleId` | string | No | Sub-role ID to assign (optional, cannot be used with navigation) |
 | `isActive` | boolean | No | Active status of the user (default: true). If set to false, user cannot login |
 | `navigation` | object | No | Navigation permissions structure (nested object with boolean values) |
 
@@ -609,27 +859,31 @@ POST /v1/auth/register-user
       "Manage Tasks": false
     },
     "Support Tickets": true,
-    "Settings": {
-      "Master": {
-        "Jobs": {
-          "Manage Jobs Templates": false
+      "Settings": {
+        "Master": {
+          "Jobs": {
+            "Manage Jobs Templates": false
+          },
+          "Attendance": {
+            "Manage Week Off": false,
+            "Holidays List": false,
+            "Assign Holidays": false,
+            "Manage Shifts": false,
+            "Assign Shift": false,
+            "Assign Leave": false,
+            "Leave Requests": false,
+            "Backdated Attendance": false
+          }
         },
-        "Attendance": {
-          "Manage Week Off": false,
-          "Holidays List": false,
-          "Assign Holidays": false,
-          "Manage Shifts": false,
-          "Assign Shift": false,
-          "Assign Leave": false,
-          "Leave Requests": false,
-          "Backdated Attendance": false
+        "Logs": {
+          "Login Logs": true,
+          "Recruiter Logs": false
+        },
+        "RBAC": {
+          "Roles": false,
+          "Manage Roles & Permissions": false
         }
-      },
-      "Logs": {
-        "Login Logs": true,
-        "Recruiter Logs": false
       }
-    }
   }
 }
 ```
@@ -646,49 +900,95 @@ POST /v1/auth/register-user
   "phoneNumber": "+1987654321",
   "countryCode": "+1",
   "subRole": "Senior Admin",
-  "navigation": {
-    "Dashboard": true,
-    "ATS": {
-      "Candidates": {
-        "Candidates": true,
-        "Share Candidate Form": false,
-        "Track Attendance": false
-      },
-      "Jobs": {
-        "Manage Jobs": true
-      },
-      "Interviews": {
-        "Generate Meeting Link": true,
-        "Manage Meetings": true
-      }
-    },
-    "Project management": {
-      "Manage Projects": false,
-      "Manage Tasks": false
-    },
-    "Support Tickets": true,
-    "Settings": {
-      "Master": {
-        "Jobs": {
-          "Manage Jobs Templates": false
+    "navigation": {
+      "Dashboard": true,
+      "ATS": {
+        "Candidates": {
+          "Candidates": {
+            "Export Candidates": true,
+            "Add Candidate": true,
+            "Actions": {
+              "View Details": true,
+              "Edit Candidate": true,
+              "View Documents": true,
+              "Upload Salary Slip": true,
+              "Share Candidate": true,
+              "View Attendance": true,
+              "Add Note": true,
+              "Add Feedback": true,
+              "Delete Candidate": true
+            }
+          },
+          "Share Candidate Form": false,
+          "Track Attendance": false
         },
-        "Attendance": {
-          "Manage Week Off": false,
-          "Holidays List": false,
-          "Assign Holidays": false,
-          "Manage Shifts": false,
-          "Assign Shift": false,
-          "Assign Leave": false,
-          "Leave Requests": false,
-          "Backdated Attendance": false
+        "Jobs": {
+          "Manage Jobs": {
+            "Create Job": true,
+            "Export Excel": true,
+            "Actions": {
+              "Edit Job": true,
+              "View Job": true,
+              "Delete Job": true
+            }
+          }
+        },
+        "Interviews": {
+          "Generate Meeting Link": true,
+          "Manage Meetings": true
         }
       },
-      "Logs": {
-        "Login Logs": true,
-        "Recruiter Logs": false
+      "Project management": {
+        "Manage Projects": {
+          "New Project": false,
+          "View Project": false,
+          "Edit Project": false,
+          "Delete Project": false
+        },
+        "Manage Tasks": {
+          "New Board": false,
+          "Add Task": false,
+          "View Task": false,
+          "Edit Task": false,
+          "Delete Task": false
+        }
+      },
+      "Support Tickets": {
+        "Create Ticket": true,
+        "Actions": {
+          "View Details": true,
+          "Delete Ticket": true
+        }
+      },
+      "Settings": {
+        "Master": {
+          "Jobs": {
+            "Manage Jobs Templates": {
+              "Create Template": false,
+              "Actions": {
+                "View Template": false,
+                "Edit Template": false,
+                "Delete Template": false
+              }
+            }
+          },
+          "Attendance": {
+            "Manage Week Off": false,
+            "Holidays List": false,
+            "Assign Holidays": false,
+            "Manage Shifts": false,
+            "Assign Shift": false,
+            "Assign Leave": false,
+            "Leave Requests": false,
+            "Backdated Attendance": false
+          }
+        },
+        "Logs": {
+          "Login Logs": true,
+          "Recruiter Logs": false
+        }
       }
-    }
-  },
+    },
   "createdAt": "2024-01-15T10:30:00.000Z",
   "updatedAt": "2024-01-15T11:45:00.000Z"
 }
@@ -724,7 +1024,21 @@ curl -X PATCH "http://localhost:3000/v1/auth/register-user/507f1f77bcf86cd799439
       "Dashboard": true,
       "ATS": {
         "Candidates": {
-          "Candidates": true
+          "Candidates": {
+            "Export Candidates": true,
+            "Add Candidate": true,
+            "Actions": {
+              "View Details": true,
+              "Edit Candidate": true,
+              "View Documents": true,
+              "Upload Salary Slip": true,
+              "Share Candidate": true,
+              "View Attendance": true,
+              "Add Note": true,
+              "Add Feedback": true,
+              "Delete Candidate": true
+            }
+          }
         }
       }
     }
@@ -743,7 +1057,21 @@ curl -X PATCH "http://localhost:3000/v1/auth/register-user/507f1f77bcf86cd799439
       "Dashboard": true,
       "ATS": {
         "Candidates": {
-          "Candidates": true
+          "Candidates": {
+            "Export Candidates": true,
+            "Add Candidate": true,
+            "Actions": {
+              "View Details": true,
+              "Edit Candidate": true,
+              "View Documents": true,
+              "Upload Salary Slip": true,
+              "Share Candidate": true,
+              "View Attendance": true,
+              "Add Note": true,
+              "Add Feedback": true,
+              "Delete Candidate": true
+            }
+          }
         }
       }
     }
@@ -851,6 +1179,43 @@ PATCH /v1/auth/register-user/:userId
 
 ---
 
+## Using Sub-Role ID
+
+Instead of providing the `navigation` structure directly, you can use `subRoleId` to assign a pre-defined sub-role:
+
+- If `subRoleId` is provided:
+  - The server fetches the corresponding sub-role
+  - The user's `subRole` (string) is automatically set to the sub-role's name
+  - The user's `navigation` is automatically populated from the sub-role's navigation structure
+- If `navigation` is provided directly:
+  - It will be stored as-is
+- **You cannot provide both `subRoleId` and `navigation` together** in the same request
+
+### Example: Register User with Sub-Role ID
+
+```bash
+curl -X POST "http://localhost:3000/v1/auth/register-user" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Jane Admin",
+    "email": "jane.admin@example.com",
+    "password": "password123",
+    "subRoleId": "65f1f77bcf86cd7994390111"
+  }'
+```
+
+The created user will have:
+- `role: "admin"`
+- `isEmailVerified: true`
+- `subRole: "Senior Admin"` (from sub-role name)
+- `subRoleId: "65f1f77bcf86cd7994390111"`
+- `navigation`: copied from the sub-role's navigation structure
+
+For more information about managing sub-roles, see the [Sub-Roles API Documentation](./SUB_ROLES_API.md).
+
+---
+
 ## Related Endpoints
 
 - `POST /v1/auth/register` - Public user registration (requires email verification)
@@ -858,6 +1223,8 @@ PATCH /v1/auth/register-user/:userId
 - `POST /v1/auth/register-recruiter` - Register recruiter (Admin only)
 - `PATCH /v1/users/:userId` - Update user (including email and password)
 - `GET /v1/users/:userId` - Get user details (including navigation structure)
+- `GET /v1/sub-roles` - List all sub-roles
+- `POST /v1/sub-roles` - Create a new sub-role
 
 ---
 
@@ -866,6 +1233,9 @@ PATCH /v1/auth/register-user/:userId
 - All timestamps are in ISO 8601 format (UTC)
 - The navigation structure is stored as a MongoDB Mixed type, allowing flexible nested structures
 - Navigation permissions can be updated later through the `PATCH /v1/auth/register-user/:userId` endpoint
+- You can use `subRoleId` to assign a pre-defined sub-role instead of providing navigation directly
+- If `subRoleId` is used, the navigation structure is automatically copied from the sub-role
+- **Important:** When a sub-role's navigation is updated, all users assigned to that sub-role automatically receive the updated permissions. This ensures consistency across users with the same sub-role.
 - Email addresses must be unique across all users
 - The registered user will have `role: 'admin'` and `isEmailVerified: true` automatically
 - Password is hashed using bcrypt before storage
@@ -875,3 +1245,4 @@ PATCH /v1/auth/register-user/:userId
 - Users have an `isActive` field (default: `true`) that controls login access
 - If `isActive` is set to `false`, the user cannot log in and will receive a deactivation message
 - You can delete registered users using `DELETE /v1/auth/register-user/:userId`
+- Setting `subRoleId` to `null` in the update endpoint will clear both `subRoleId`, `subRole`, and `navigation`

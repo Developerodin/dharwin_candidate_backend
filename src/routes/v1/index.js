@@ -16,6 +16,7 @@ import holidayRoute from './holiday.route.js';
 import shiftRoute from './shift.route.js';
 import leaveRequestRoute from './leaveRequest.route.js';
 import backdatedAttendanceRequestRoute from './backdatedAttendanceRequest.route.js';
+import subRoleRoute from './subRole.route.js';
 import docsRoute from './docs.route.js';
 import config from '../../config/config.js';
 
@@ -89,6 +90,10 @@ const defaultRoutes = [
   {
     path: '/backdated-attendance-requests',
     route: backdatedAttendanceRequestRoute,
+  },
+  {
+    path: '/sub-roles',
+    route: subRoleRoute,
   },
 ];
 
