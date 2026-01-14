@@ -125,6 +125,7 @@ const getCandidates = {
     owner: Joi.string().custom(objectId),
     fullName: Joi.string(),
     email: Joi.string().email(),
+    employeeId: Joi.string().trim(),
     sortBy: Joi.string(),
     limit: Joi.number().integer(),
     page: Joi.number().integer(),

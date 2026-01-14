@@ -73,6 +73,7 @@ const list = catchAsync(async (req, res) => {
     'owner', 
     'fullName', 
     'email',
+    'employeeId',
     // Advanced filtering parameters
     'skills',
     'skillLevel',

@@ -250,6 +250,9 @@ const buildAdvancedFilter = (filter) => {
   if (filter.email) {
     mongoFilter.email = { $regex: filter.email, $options: 'i' };
   }
+  if (filter.employeeId) {
+    mongoFilter.employeeId = { $regex: filter.employeeId, $options: 'i' };
+  }
   
   // Skills matching
   if (filter.skills) {
@@ -677,6 +680,7 @@ const exportAllCandidates = async (filters = {}) => {
   // Format candidates data for export
   const exportData = candidates.map(candidate => ({
     id: candidate.id,
+    employeeId: candidate.employeeId || '',
     fullName: candidate.fullName,
     email: candidate.email,
     phoneNumber: candidate.phoneNumber,

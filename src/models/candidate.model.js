@@ -74,6 +74,9 @@ const candidateSchema = new mongoose.Schema(
     owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     adminId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
 
+    // Employee ID - Auto-generated unique identifier (DBS1, DBS2, DBS3, ...)
+    employeeId: { type: String, trim: true, unique: true, sparse: true, index: true },
+
     // Personal Info
     fullName: { type: String, required: true, trim: true },
     email: { type: String, required: true, trim: true, lowercase: true, unique: true },
@@ -207,6 +210,41 @@ const candidateSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Pre-save hook to auto-generate employeeId for new candidates
+candidateSchema.pre('save', async function (next) {
+  // Only generate employeeId for new candidates that don't have one
+  if (this.isNew && (!this.employeeId || this.employeeId.trim() === '')) {
+    try {
+      // Find all candidates with employee IDs and extract the maximum number
+      const candidatesWithIds = await this.constructor.find(
+        { employeeId: { $exists: true, $ne: null, $regex: /^DBS\d+$/i } },
+        { employeeId: 1 }
+      ).lean();
+
+      let maxNumber = 0;
+      
+      // Extract numbers from all employee IDs and find the maximum
+      candidatesWithIds.forEach(candidate => {
+        if (candidate.employeeId) {
+          const match = candidate.employeeId.match(/^DBS(\d+)$/i);
+          if (match) {
+            const num = parseInt(match[1], 10);
+            if (num > maxNumber) {
+              maxNumber = num;
+            }
+          }
+        }
+      });
+
+      const nextNumber = maxNumber + 1;
+      this.employeeId = `DBS${nextNumber}`;
+    } catch (error) {
+      return next(error);
+    }
+  }
+  next();
+});
 
 // Pre-save hook to update isActive based on resignDate
 candidateSchema.pre('save', function (next) {

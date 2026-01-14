@@ -438,7 +438,9 @@ Get a list of support tickets with pagination and filtering.
 
 **Access:**
 - **Candidates:** Only their own tickets
-- **Admins:** All tickets
+- **Admins with subRole="Admin":** All tickets (full access)
+- **Admins with other subRoles:** Only tickets assigned to them
+- **Admins without subRole:** All tickets (full access)
 
 **Query Parameters:**
 | Parameter | Type | Description | Example |
@@ -525,7 +527,9 @@ Get detailed information about a specific support ticket.
 
 **Access:**
 - **Candidates:** Only their own tickets
-- **Admins:** Any ticket
+- **Admins with subRole="Admin":** Any ticket (full access)
+- **Admins with other subRoles:** Only tickets assigned to them
+- **Admins without subRole:** Any ticket (full access)
 
 **URL Parameters:**
 | Parameter | Type | Description |
@@ -562,7 +566,8 @@ GET /v1/support-tickets/507f1f77bcf86cd799439011
     "id": "507f1f77bcf86cd799439016",
     "name": "Support Admin",
     "email": "support@example.com",
-    "role": "admin"
+    "role": "admin",
+    "subRole": "Technical Support"
   },
   "attachments": [
     {
@@ -614,6 +619,7 @@ GET /v1/support-tickets/507f1f77bcf86cd799439011
 **Error Responses:**
 - `404 Not Found`: Ticket not found
 - `403 Forbidden`: User trying to access another user's ticket
+- `403 Forbidden`: "You can only view tickets assigned to you" (for admins with subRole trying to view unassigned tickets)
 
 ---
 
@@ -625,7 +631,9 @@ Update a support ticket (status, priority, category, assignment).
 
 **Access:**
 - **Candidates:** Can only close their own tickets (`status: "Closed"`)
-- **Admins:** Can update all fields
+- **Admins with subRole="Admin":** Can update all fields (full access)
+- **Admins with other subRoles:** Can only update tickets assigned to them
+- **Admins without subRole:** Can update all fields (full access)
 
 **URL Parameters:**
 | Parameter | Type | Description |
@@ -641,6 +649,28 @@ Update a support ticket (status, priority, category, assignment).
   "assignedTo": "507f1f77bcf86cd799439016"  // Optional: User ID to assign ticket to
 }
 ```
+
+**SubRole-Based Assignment Rules:**
+- **SubRole Admins:** If the admin user has a `subRole` (e.g., `subRole="Admin"`), they can assign tickets to other admin users who also have a `subRole` (e.g., `subRole="Agent"`). The subRoles can be different - a user with `subRole="Admin"` can assign to a user with `subRole="Agent"`, as long as both users have a `subRole` assigned.
+- **Regular Admins:** Admins without a `subRole` can assign tickets to any admin user (with or without a `subRole`).
+- **Validation:** When assigning a ticket:
+  - The assigned user must exist and be an admin (`role: "admin"`).
+  - If the assigning admin has a `subRole`, the assigned user must also have a `subRole` (but the subRoles can be different).
+  - Users without a `subRole` cannot be assigned tickets by subRole admins.
+
+**Example:**
+- `user1` (role="admin", subRole="Admin") can assign tickets to `user2` (role="admin", subRole="Agent").
+- `user1` (role="admin", subRole="Admin") cannot assign tickets to `user3` (role="admin", subRole=null).
+
+**Visibility Rules for SubRole Admins:**
+- **Admins with subRole="Admin":** Can view, update, and comment on all tickets (full access - special privilege).
+- **Admins with other subRoles (e.g., "Agent", "Support", etc.):** Can only view, update, and comment on tickets that are assigned to them.
+- **Admins without subRole:** Can view, update, and comment on all tickets (full access).
+
+**Example:**
+- `user1` (role="admin", subRole="Admin") can see all tickets (full access).
+- `user2` (role="admin", subRole="Agent") can only see tickets where `assignedTo = user2.id`.
+- `user3` (role="admin", subRole=null) can see all tickets (full access).
 
 **Request Body (Candidate - can only close):**
 ```json
@@ -689,6 +719,40 @@ Authorization: Bearer <token>
 
 **Note:** When status is updated to "Resolved" or "Closed", the system automatically sets `resolvedAt`/`resolvedBy` or `closedAt`/`closedBy` fields.
 
+**Error Responses:**
+
+**400 Bad Request - Invalid Assignment (SubRole Admin):**
+```json
+{
+  "code": 400,
+  "message": "Cannot assign ticket to a user without a subRole. Only users with subRoles can be assigned tickets by subRole admins."
+}
+```
+
+**400 Bad Request - Invalid Assignment (Non-Admin):**
+```json
+{
+  "code": 400,
+  "message": "Cannot assign ticket to a non-admin user. Tickets can only be assigned to admin users with subRoles."
+}
+```
+
+**404 Not Found - User Not Found:**
+```json
+{
+  "code": 404,
+  "message": "User to assign ticket to not found"
+}
+```
+
+**403 Forbidden (SubRole Admin - Update):**
+```json
+{
+  "code": 403,
+  "message": "You can only update tickets assigned to you"
+}
+```
+
 ---
 
 ### 5. Add Comment to Ticket
@@ -699,7 +763,9 @@ Add a comment to a support ticket with optional image/video attachments.
 
 **Access:** 
 - **Candidates:** Can comment on their own tickets
-- **Admins:** Can comment on any ticket
+- **Admins with subRole="Admin":** Can comment on any ticket (full access)
+- **Admins with other subRoles:** Can only comment on tickets assigned to them
+- **Admins without subRole:** Can comment on any ticket (full access)
 
 **Content-Type:** `multipart/form-data` (when uploading files) or `application/json` (without files)
 
@@ -812,6 +878,14 @@ Authorization: Bearer <token>
 {
   "code": 403,
   "message": "You can only comment on your own tickets"
+}
+```
+
+**403 Forbidden (SubRole Admin):**
+```json
+{
+  "code": 403,
+  "message": "You can only comment on tickets assigned to you"
 }
 ```
 

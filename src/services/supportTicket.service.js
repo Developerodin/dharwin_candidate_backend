@@ -96,19 +96,23 @@ const querySupportTickets = async (filter, options, user) => {
       // No candidate profile, only show tickets created by user
       filter.createdBy = user.id;
     }
+  } else if (user.role === 'admin' && user.subRole && user.subRole !== 'Admin') {
+    // Admin with subRole (except "Admin") can only see tickets assigned to them
+    filter.assignedTo = user.id;
   }
+  // Admin without subRole or with subRole="Admin" can see all tickets (no filter applied)
 
   const result = await SupportTicket.paginate(filter, options);
 
   // Populate fields
   if (result.results && result.results.length > 0) {
     await SupportTicket.populate(result.results, [
-      { path: 'createdBy', select: 'name email role' },
+      { path: 'createdBy', select: 'name email role subRole' },
       { path: 'candidate', select: 'fullName email' },
-      { path: 'assignedTo', select: 'name email role' },
+      { path: 'assignedTo', select: 'name email role subRole' },
       { path: 'resolvedBy', select: 'name email' },
       { path: 'closedBy', select: 'name email' },
-      { path: 'comments.commentedBy', select: 'name email role' },
+      { path: 'comments.commentedBy', select: 'name email role subRole' },
     ]);
     
     // Ensure timestamps are included in the response (toJSON plugin removes them)
@@ -132,13 +136,14 @@ const querySupportTickets = async (filter, options, user) => {
               const userId = typeof comment.commentedBy === 'string' 
                 ? comment.commentedBy 
                 : (comment.commentedBy._id ? comment.commentedBy._id.toString() : comment.commentedBy.toString());
-              const user = await User.findById(userId).select('name email role').lean();
+              const user = await User.findById(userId).select('name email role subRole').lean();
               if (user) {
                 comment.commentedBy = {
                   id: user._id.toString(),
                   name: user.name,
                   email: user.email,
                   role: user.role,
+                  subRole: user.subRole || null,
                 };
               }
             } else if (comment.commentedBy && typeof comment.commentedBy === 'object' && comment.commentedBy._id) {
@@ -172,8 +177,9 @@ const getSupportTicketById = async (ticketId, user) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'Support ticket not found');
   }
 
-  // Check permissions: admin can see all, users can see tickets they created OR tickets created for their candidate profile
+  // Check permissions
   if (user.role !== 'admin') {
+    // Non-admin users can see tickets they created OR tickets created for their candidate profile
     const candidate = await Candidate.findOne({ owner: user.id });
     const canView = 
       String(ticket.createdBy) === String(user.id) || 
@@ -182,16 +188,22 @@ const getSupportTicketById = async (ticketId, user) => {
     if (!canView) {
       throw new ApiError(httpStatus.FORBIDDEN, 'You can only view your own tickets');
     }
+  } else if (user.role === 'admin' && user.subRole && user.subRole !== 'Admin') {
+    // Admin with subRole (except "Admin") can only see tickets assigned to them
+    if (!ticket.assignedTo || String(ticket.assignedTo) !== String(user.id)) {
+      throw new ApiError(httpStatus.FORBIDDEN, 'You can only view tickets assigned to you');
+    }
   }
+  // Admin without subRole or with subRole="Admin" can see all tickets (no check needed)
 
   // Populate fields
   await ticket.populate([
-    { path: 'createdBy', select: 'name email role' },
+    { path: 'createdBy', select: 'name email role subRole' },
     { path: 'candidate', select: 'fullName email' },
-    { path: 'assignedTo', select: 'name email role' },
+    { path: 'assignedTo', select: 'name email role subRole' },
     { path: 'resolvedBy', select: 'name email' },
     { path: 'closedBy', select: 'name email' },
-    { path: 'comments.commentedBy', select: 'name email role' },
+    { path: 'comments.commentedBy', select: 'name email role subRole' },
   ]);
 
   // Ensure timestamps are included (toJSON plugin removes them)
@@ -249,8 +261,9 @@ const updateSupportTicketById = async (ticketId, updateData, user) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'Support ticket not found');
   }
 
-  // Check permissions: admin can update all, users can update tickets they created OR tickets created for their candidate profile
+  // Check permissions
   if (user.role !== 'admin') {
+    // Non-admin users can update tickets they created OR tickets created for their candidate profile
     const candidate = await Candidate.findOne({ owner: user.id });
     const canUpdate = 
       String(ticket.createdBy) === String(user.id) || 
@@ -259,7 +272,13 @@ const updateSupportTicketById = async (ticketId, updateData, user) => {
     if (!canUpdate) {
       throw new ApiError(httpStatus.FORBIDDEN, 'You can only update your own tickets');
     }
+  } else if (user.role === 'admin' && user.subRole && user.subRole !== 'Admin') {
+    // Admin with subRole (except "Admin") can only update tickets assigned to them
+    if (!ticket.assignedTo || String(ticket.assignedTo) !== String(user.id)) {
+      throw new ApiError(httpStatus.FORBIDDEN, 'You can only update tickets assigned to you');
+    }
   }
+  // Admin without subRole or with subRole="Admin" can update all tickets (no check needed)
 
   // Only admin can update tickets (except status updates by ticket creator)
   if (user.role !== 'admin') {
@@ -271,6 +290,33 @@ const updateSupportTicketById = async (ticketId, updateData, user) => {
     delete updateData.assignedTo;
     delete updateData.priority;
     delete updateData.category;
+  }
+
+  // Validate subRole-based assignment: subRole admins can only assign to users with subRoles
+  if (updateData.assignedTo && user.role === 'admin') {
+    // Fetch the user being assigned to
+    const assignedUser = await User.findById(updateData.assignedTo).select('role subRole');
+    
+    if (!assignedUser) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'User to assign ticket to not found');
+    }
+
+    // If the assigning user has a subRole, ensure the assigned user also has a subRole
+    if (user.subRole) {
+      if (!assignedUser.subRole) {
+        throw new ApiError(
+          httpStatus.BAD_REQUEST,
+          'Cannot assign ticket to a user without a subRole. Only users with subRoles can be assigned tickets by subRole admins.'
+        );
+      }
+      // Ensure assigned user is an admin
+      if (assignedUser.role !== 'admin') {
+        throw new ApiError(
+          httpStatus.BAD_REQUEST,
+          'Cannot assign ticket to a non-admin user. Tickets can only be assigned to admin users with subRoles.'
+        );
+      }
+    }
   }
 
   // If status is being updated, use the method to handle it properly
@@ -285,12 +331,12 @@ const updateSupportTicketById = async (ticketId, updateData, user) => {
 
   // Populate fields
   await ticket.populate([
-    { path: 'createdBy', select: 'name email role' },
+    { path: 'createdBy', select: 'name email role subRole' },
     { path: 'candidate', select: 'fullName email' },
-    { path: 'assignedTo', select: 'name email role' },
+    { path: 'assignedTo', select: 'name email role subRole' },
     { path: 'resolvedBy', select: 'name email' },
     { path: 'closedBy', select: 'name email' },
-    { path: 'comments.commentedBy', select: 'name email role' },
+    { path: 'comments.commentedBy', select: 'name email role subRole' },
   ]);
 
   // Ensure timestamps are included (toJSON plugin removes them)
@@ -349,8 +395,9 @@ const addCommentToTicket = async (ticketId, content, user, files = []) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'Support ticket not found');
   }
 
-  // Check permissions: admin can comment on all, users can comment on tickets they created OR tickets created for their candidate profile
+  // Check permissions
   if (user.role !== 'admin') {
+    // Non-admin users can comment on tickets they created OR tickets created for their candidate profile
     const candidate = await Candidate.findOne({ owner: user.id });
     const canComment = 
       String(ticket.createdBy) === String(user.id) || 
@@ -359,7 +406,13 @@ const addCommentToTicket = async (ticketId, content, user, files = []) => {
     if (!canComment) {
       throw new ApiError(httpStatus.FORBIDDEN, 'You can only comment on your own tickets');
     }
+  } else if (user.role === 'admin' && user.subRole && user.subRole !== 'Admin') {
+    // Admin with subRole (except "Admin") can only comment on tickets assigned to them
+    if (!ticket.assignedTo || String(ticket.assignedTo) !== String(user.id)) {
+      throw new ApiError(httpStatus.FORBIDDEN, 'You can only comment on tickets assigned to you');
+    }
   }
+  // Admin without subRole or with subRole="Admin" can comment on all tickets (no check needed)
 
   // Check if ticket is closed
   if (ticket.status === 'Closed') {
@@ -393,12 +446,12 @@ const addCommentToTicket = async (ticketId, content, user, files = []) => {
 
   // Populate fields
   await ticket.populate([
-    { path: 'createdBy', select: 'name email role' },
+    { path: 'createdBy', select: 'name email role subRole' },
     { path: 'candidate', select: 'fullName email' },
-    { path: 'assignedTo', select: 'name email role' },
+    { path: 'assignedTo', select: 'name email role subRole' },
     { path: 'resolvedBy', select: 'name email' },
     { path: 'closedBy', select: 'name email' },
-    { path: 'comments.commentedBy', select: 'name email role' },
+    { path: 'comments.commentedBy', select: 'name email role subRole' },
   ]);
 
   // Ensure timestamps are included (toJSON plugin removes them)
