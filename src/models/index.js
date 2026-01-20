@@ -14,6 +14,7 @@ import RecruiterActivityLog from './recruiterActivityLog.model.js';
 import Holiday from './holiday.model.js';
 import Shift from './shift.model.js';
 import SubRole from './subRole.model.js';
+import CandidateGroup from './candidateGroup.model.js';
 
-export { Token, User, Candidate, Meeting, LoginLog, Attendance, ChatMessage, Project, Task, TaskComment, Job, JobTemplate, RecruiterActivityLog, Holiday, Shift, SubRole };
+export { Token, User, Candidate, Meeting, LoginLog, Attendance, ChatMessage, Project, Task, TaskComment, Job, JobTemplate, RecruiterActivityLog, Holiday, Shift, SubRole, CandidateGroup };
 

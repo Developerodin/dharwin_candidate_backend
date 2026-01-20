@@ -39,7 +39,8 @@ router
 // Add holidays to candidate calendar attendance (admin only)
 router
   .route('/holidays')
-  .post(auth('manageCandidates'), validate(attendanceValidation.addHolidaysToCandidates), attendanceController.addHolidays);
+  .post(auth('manageCandidates'), validate(attendanceValidation.addHolidaysToCandidates), attendanceController.addHolidays)
+  .delete(auth('manageCandidates'), validate(attendanceValidation.removeHolidaysFromCandidates), attendanceController.removeHolidays);
 
 // Assign leaves to candidate calendar attendance (admin only)
 router

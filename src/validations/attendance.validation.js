@@ -92,6 +92,27 @@ const addHolidaysToCandidates = {
   }),
 };
 
+const removeHolidaysFromCandidates = {
+  body: Joi.object().keys({
+    candidateIds: Joi.array()
+      .items(Joi.string().custom(objectId))
+      .min(1)
+      .required()
+      .messages({
+        'array.min': 'At least one candidate ID is required',
+        'any.required': 'Candidate IDs are required',
+      }),
+    holidayIds: Joi.array()
+      .items(Joi.string().custom(objectId))
+      .min(1)
+      .required()
+      .messages({
+        'array.min': 'At least one holiday ID is required',
+        'any.required': 'Holiday IDs are required',
+      }),
+  }),
+};
+
 /**
  * Leave limits validation:
  * - Casual (paid) leaves: Maximum 21 per candidate
@@ -177,6 +198,7 @@ export {
   getCurrentStatus,
   getStatistics,
   addHolidaysToCandidates,
+  removeHolidaysFromCandidates,
   assignLeavesToCandidates,
   updateLeave,
   deleteLeave,

@@ -132,10 +132,11 @@ Complete Navigation Structure Example:
           }
         }
       },
-      "Attendance": {
+        "Attendance": {
         "Manage Week Off": false,
         "Holidays List": false,
         "Assign Holidays": false,
+        "Candidate Groups": false,
         "Manage Shifts": false,
         "Assign Shift": false,
         "Assign Leave": false,
@@ -259,6 +260,7 @@ curl -X POST "http://localhost:3000/v1/sub-roles" \
             "Manage Week Off": true,
             "Holidays List": true,
             "Assign Holidays": true,
+            "Candidate Groups": true,
             "Manage Shifts": true,
             "Assign Shift": true,
             "Assign Leave": true,
@@ -510,6 +512,7 @@ curl -X PATCH "http://localhost:3000/v1/sub-roles/65f1f77bcf86cd7994390111" \
             "Manage Week Off": true,
             "Holidays List": true,
             "Assign Holidays": true,
+            "Candidate Groups": true,
             "Manage Shifts": true,
             "Assign Shift": true,
             "Assign Leave": true,

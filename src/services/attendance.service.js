@@ -568,6 +568,110 @@ const addHolidaysToCandidates = async (candidateIds, holidayIds, user) => {
 };
 
 /**
+ * Remove holidays from candidate calendar attendance
+ * Admin can remove multiple holidays from multiple candidates at once
+ * @param {Array<string>} candidateIds - Array of candidate IDs
+ * @param {Array<string>} holidayIds - Array of holiday IDs
+ * @param {Object} user - Current user
+ * @returns {Promise<Object>}
+ */
+const removeHolidaysFromCandidates = async (candidateIds, holidayIds, user) => {
+  // Check permissions: only admin can remove holidays
+  if (user.role !== 'admin') {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Only admin can remove holidays from candidate calendar');
+  }
+
+  // Validate candidate IDs
+  const candidates = await Candidate.find({ _id: { $in: candidateIds } });
+  if (candidates.length !== candidateIds.length) {
+    const foundIds = candidates.map((c) => String(c._id));
+    const missingIds = candidateIds.filter((id) => !foundIds.includes(String(id)));
+    throw new ApiError(httpStatus.NOT_FOUND, `Some candidates not found: ${missingIds.join(', ')}`);
+  }
+
+  // Validate holiday IDs
+  const holidays = await Holiday.find({ _id: { $in: holidayIds } });
+  if (holidays.length !== holidayIds.length) {
+    const foundIds = holidays.map((h) => String(h._id));
+    const missingIds = holidayIds.filter((id) => !foundIds.includes(String(id)));
+    throw new ApiError(httpStatus.NOT_FOUND, `Some holidays not found: ${missingIds.join(', ')}`);
+  }
+
+  const deletedRecords = [];
+  const skipped = [];
+  const candidateMap = new Map(candidates.map((c) => [String(c._id), c]));
+
+  // Process each candidate
+  for (const candidateId of candidateIds) {
+    const candidate = candidateMap.get(String(candidateId));
+    if (!candidate) continue;
+
+    // Get current holidays array (convert to string array for comparison)
+    const currentHolidayIds = (candidate.holidays || []).map((h) => String(h));
+    const holidaysToRemove = holidayIds.filter((id) => currentHolidayIds.includes(String(id)));
+
+    // Remove holidays from candidate's holidays array
+    if (holidaysToRemove.length > 0) {
+      candidate.holidays = (candidate.holidays || []).filter(
+        (h) => !holidaysToRemove.includes(String(h))
+      );
+      await candidate.save();
+    }
+
+    // Delete attendance records for each holiday date
+    for (const holiday of holidays) {
+      const normalizedDate = new Date(holiday.date);
+      normalizedDate.setHours(0, 0, 0, 0);
+      const nextDay = new Date(normalizedDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+
+      // Find and delete attendance records with status 'Holiday' for this date
+      const attendance = await Attendance.findOneAndDelete({
+        candidate: candidateId,
+        date: {
+          $gte: normalizedDate,
+          $lt: nextDay,
+        },
+        status: 'Holiday',
+        notes: { $regex: new RegExp(`Holiday: ${holiday.title}`, 'i') },
+      });
+
+      if (attendance) {
+        deletedRecords.push({
+          candidateId,
+          candidateName: candidate.fullName,
+          holidayId: holiday._id,
+          holidayTitle: holiday.title,
+          date: normalizedDate.toISOString(),
+          attendanceId: attendance._id,
+        });
+      } else {
+        skipped.push({
+          candidateId,
+          candidateName: candidate.fullName,
+          holidayId: holiday._id,
+          holidayTitle: holiday.title,
+          date: normalizedDate.toISOString(),
+          reason: 'No holiday attendance record found for this date',
+        });
+      }
+    }
+  }
+
+  return {
+    success: true,
+    message: `Holidays removed from ${candidates.length} candidate(s). Deleted ${deletedRecords.length} attendance record(s).`,
+    data: {
+      candidatesUpdated: candidates.length,
+      holidaysRemoved: holidayIds.length,
+      attendanceRecordsDeleted: deletedRecords.length,
+      deletedRecords,
+      skipped: skipped.length > 0 ? skipped : undefined,
+    },
+  };
+};
+
+/**
  * Assign leaves to candidate calendar attendance
  * Admin can assign leaves (casual, sick, or unpaid) to multiple candidates for specific dates
  * @param {Array<string>} candidateIds - Array of candidate IDs
@@ -1039,6 +1143,7 @@ export {
   getAttendanceStatistics,
   getAllAttendance,
   addHolidaysToCandidates,
+  removeHolidaysFromCandidates,
   assignLeavesToCandidates,
   updateLeaveForCandidate,
   deleteLeaveForCandidate,

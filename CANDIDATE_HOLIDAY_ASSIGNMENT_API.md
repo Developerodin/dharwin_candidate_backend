@@ -307,14 +307,109 @@ When rendering attendance:
 
 ---
 
+---
+
+### 2. Remove Holidays from Candidate Attendance Calendar
+
+Remove one or more assigned holidays from multiple candidates.
+
+**Endpoint:** `DELETE /v1/attendance/holidays`
+
+**Access:** Admin only
+
+**Description:**
+- Removes existing holidays (by ID) from a list of candidates (by ID).
+- For each candidate × holiday:
+  - Removes the holiday ID from `candidate.holidays` if present.
+  - Deletes `Attendance` records with `status: 'Holiday'` for that date.
+
+---
+
+#### Request
+
+**Request Body:**
+
+```json
+{
+  "candidateIds": [
+    "507f1f77bcf86cd799439011",
+    "507f1f77bcf86cd799439012"
+  ],
+  "holidayIds": [
+    "507f1f77bcf86cd799439020",
+    "507f1f77bcf86cd799439021"
+  ]
+}
+```
+
+**Fields:**
+
+| Field         | Type   | Required | Description                                      |
+|--------------|--------|----------|--------------------------------------------------|
+| `candidateIds` | array | Yes      | Array of candidate ObjectIds (min 1)           |
+| `holidayIds`   | array | Yes      | Array of holiday ObjectIds (min 1)             |
+
+Both arrays must contain valid MongoDB ObjectIds that exist in the database.
+
+---
+
+#### Success Response
+
+**Status:** `200 OK`
+
+```json
+{
+  "success": true,
+  "message": "Holidays removed from 2 candidate(s). Deleted 4 attendance record(s).",
+  "data": {
+    "candidatesUpdated": 2,
+    "holidaysRemoved": 2,
+    "attendanceRecordsDeleted": 4,
+    "deletedRecords": [
+      {
+        "candidateId": "507f1f77bcf86cd799439011",
+        "candidateName": "John Doe",
+        "holidayId": "507f1f77bcf86cd799439020",
+        "holidayTitle": "New Year",
+        "date": "2026-01-01T00:00:00.000Z",
+        "attendanceId": "ATTENDANCE_ID"
+      }
+    ],
+    "skipped": [
+      {
+        "candidateId": "507f1f77bcf86cd799439011",
+        "candidateName": "John Doe",
+        "holidayId": "507f1f77bcf86cd799439020",
+        "holidayTitle": "New Year",
+        "date": "2026-01-01T00:00:00.000Z",
+        "reason": "No holiday attendance record found for this date"
+      }
+    ]
+  }
+}
+```
+
+**Notes:**
+- `deletedRecords`: List of deleted attendance records with details.
+- `skipped`: Optional array; present only when some candidate/date combinations were skipped because no holiday attendance record was found.
+
+---
+
+#### Error Responses
+
+Same error responses as the add holidays endpoint (400, 403, 404).
+
+---
+
 ## Summary
 
 - **Create Holiday Definitions:** `POST /v1/holidays`
 - **Assign Holidays to Candidates:** `POST /v1/attendance/holidays`
+- **Remove Holidays from Candidates:** `DELETE /v1/attendance/holidays`
 - **Data Stored:**
   - Candidate: `holidays: [HolidayId, ...]`
   - Attendance: `status: 'Holiday'`, `notes: 'Holiday: <title>'`
-- **Access:** Holiday assignment requires admin with `manageCandidates`
-- **Use Case:** Bulk-assign multiple holidays to multiple candidates and reflect them in their attendance calendar.
+- **Access:** Holiday assignment/removal requires admin with `manageCandidates`
+- **Use Case:** Bulk-assign or remove multiple holidays from multiple candidates and reflect them in their attendance calendar.
 
 

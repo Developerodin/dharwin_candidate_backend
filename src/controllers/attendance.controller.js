@@ -12,6 +12,7 @@ import {
   getAttendanceStatistics,
   getAllAttendance,
   addHolidaysToCandidates,
+  removeHolidaysFromCandidates,
   assignLeavesToCandidates,
   updateLeaveForCandidate,
   deleteLeaveForCandidate,
@@ -218,6 +219,17 @@ const addHolidays = catchAsync(async (req, res) => {
 });
 
 /**
+ * Remove holidays from candidate calendar attendance
+ */
+const removeHolidays = catchAsync(async (req, res) => {
+  const { candidateIds, holidayIds } = req.body;
+
+  const result = await removeHolidaysFromCandidates(candidateIds, holidayIds, req.user);
+
+  res.status(httpStatus.OK).send(result);
+});
+
+/**
  * Assign leaves to candidate calendar attendance
  */
 const assignLeaves = catchAsync(async (req, res) => {
@@ -277,6 +289,7 @@ export {
   get,
   getStatistics,
   addHolidays,
+  removeHolidays,
   assignLeaves,
   updateLeave,
   deleteLeave,
