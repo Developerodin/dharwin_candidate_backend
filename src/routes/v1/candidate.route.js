@@ -1,5 +1,6 @@
 import express from 'express';
 import auth from '../../middlewares/auth.js';
+import documentAuth from '../../middlewares/documentAuth.js';
 import validate from '../../middlewares/validate.js';
 import * as candidateValidation from '../../validations/candidate.validation.js';
 import * as candidateController from '../../controllers/candidate.controller.js';
@@ -81,6 +82,10 @@ router
 router
   .route('/documents/:candidateId')
   .get(auth(), validate(candidateValidation.getDocuments), candidateController.getCandidateDocuments);
+
+router
+  .route('/documents/:candidateId/:documentIndex/download')
+  .get(documentAuth, candidateController.downloadDocument);
 
 router
   .route('/documents/verify/:candidateId/:documentIndex')

@@ -6,11 +6,26 @@ import { createUser, getUserByEmail, updateUserById, getUserById } from './user.
 import { generateVerifyEmailToken } from './token.service.js';
 import { sendVerificationEmail } from './email.service.js';
 import { getShiftById } from './shift.service.js';
+import { generatePresignedDownloadUrl } from '../config/s3.js';
+import config from '../config/config.js';
 import ApiError from '../utils/ApiError.js';
 
 const isOwnerOrAdmin = (user, candidate) => {
   if (!candidate) return false;
   return user.role === 'admin' || user.role === 'recruiter' || String(candidate.owner) === String(user.id || user._id);
+};
+
+// Helper function to generate document API endpoint URL (never expires)
+// Optionally accepts a token parameter to include in the URL for direct browser access
+const getDocumentApiUrl = (candidateId, documentIndex, token = null) => {
+  // Use backend API URL - construct from environment or use default
+  const backendUrl = process.env.BACKEND_URL || 
+    (config.env === 'development' 
+      ? `http://localhost:${config.port}` 
+      : 'https://crm-apis.dharwinbusinesssolutions.com');
+  const baseUrl = `${backendUrl}/v1/candidates/documents/${candidateId}/${documentIndex}/download`;
+  // Include token in query parameter if provided (for direct browser access)
+  return token ? `${baseUrl}?token=${encodeURIComponent(token)}` : baseUrl;
 };
 
 const calculateProfileCompletion = (candidate) => {
@@ -611,6 +626,43 @@ const getCandidateById = async (id) => {
     if (ownerCountryCode !== null) {
       candidate.countryCode = ownerCountryCode;
     }
+    
+    // Regenerate presigned URLs for profile picture if it has a key
+    if (candidate.profilePicture?.key) {
+      try {
+        const profilePictureUrl = await generatePresignedDownloadUrl(candidate.profilePicture.key, 7 * 24 * 3600);
+        candidate.profilePicture.url = profilePictureUrl;
+      } catch (error) {
+        console.error('Failed to regenerate profile picture URL:', error);
+      }
+    }
+    
+    // Update document URLs to use API endpoints (never expire)
+    // Always use API endpoints, even if key is missing (download endpoint can extract key from URL)
+    if (candidate.documents && candidate.documents.length > 0) {
+      candidate.documents.forEach((doc, index) => {
+        // Only update if document has a key OR a URL (old documents)
+        if (doc.key || doc.url) {
+          doc.url = getDocumentApiUrl(candidate._id.toString(), index);
+        }
+      });
+    }
+    
+    // Regenerate presigned URLs for salary slips
+    if (candidate.salarySlips && candidate.salarySlips.length > 0) {
+      await Promise.all(
+        candidate.salarySlips.map(async (slip) => {
+          if (slip.key) {
+            try {
+              const freshUrl = await generatePresignedDownloadUrl(slip.key, 7 * 24 * 3600);
+              slip.documentUrl = freshUrl;
+            } catch (error) {
+              console.error(`Failed to regenerate URL for salary slip:`, error);
+            }
+          }
+        })
+      );
+    }
   }
   return candidate;
 };
@@ -854,19 +906,28 @@ const getDocumentStatus = async (candidateId, user) => {
     throw new ApiError(httpStatus.FORBIDDEN, 'Access denied');
   }
 
-  // Return only document information with status
-  const documentsWithStatus = candidate.documents.map((doc, index) => ({
-    index,
-    label: doc.label,
-    originalName: doc.originalName,
-    status: doc.status,
-    adminNotes: doc.adminNotes,
-    verifiedAt: doc.verifiedAt,
-    verifiedBy: doc.verifiedBy,
-    url: doc.url,
-    size: doc.size,
-    mimeType: doc.mimeType
-  }));
+  // Return documents with API endpoint URLs (never expire)
+  // Always use API endpoints, even if key is missing (download endpoint can extract key from URL)
+  const documentsWithStatus = candidate.documents.map((doc, index) => {
+    // Use API endpoint URL instead of direct S3 URL
+    // Only use stored URL if neither key nor url exists (shouldn't happen)
+    const url = (doc.key || doc.url) 
+      ? getDocumentApiUrl(candidate._id.toString(), index) 
+      : doc.url;
+    
+    return {
+      index,
+      label: doc.label,
+      originalName: doc.originalName,
+      status: doc.status,
+      adminNotes: doc.adminNotes,
+      verifiedAt: doc.verifiedAt,
+      verifiedBy: doc.verifiedBy,
+      url,
+      size: doc.size,
+      mimeType: doc.mimeType
+    };
+  });
 
   return {
     candidateId: candidate._id,
@@ -887,20 +948,29 @@ const getDocuments = async (candidateId, user) => {
     throw new ApiError(httpStatus.FORBIDDEN, 'Access denied');
   }
 
-  // Return all document information
-  const documents = candidate.documents.map((doc, index) => ({
-    index,
-    label: doc.label,
-    originalName: doc.originalName,
-    url: doc.url,
-    key: doc.key,
-    size: doc.size,
-    mimeType: doc.mimeType,
-    status: doc.status,
-    adminNotes: doc.adminNotes,
-    verifiedAt: doc.verifiedAt,
-    verifiedBy: doc.verifiedBy
-  }));
+  // Return documents with API endpoint URLs (never expire)
+  // Always use API endpoints, even if key is missing (download endpoint can extract key from URL)
+  const documents = candidate.documents.map((doc, index) => {
+    // Use API endpoint URL instead of direct S3 URL
+    // Only use stored URL if neither key nor url exists (shouldn't happen)
+    const url = (doc.key || doc.url) 
+      ? getDocumentApiUrl(candidate._id.toString(), index) 
+      : doc.url;
+    
+    return {
+      index,
+      label: doc.label,
+      originalName: doc.originalName,
+      url,
+      key: doc.key,
+      size: doc.size,
+      mimeType: doc.mimeType,
+      status: doc.status,
+      adminNotes: doc.adminNotes,
+      verifiedAt: doc.verifiedAt,
+      verifiedBy: doc.verifiedBy
+    };
+  });
 
   return {
     candidateId: candidate._id,
@@ -908,6 +978,96 @@ const getDocuments = async (candidateId, user) => {
     email: candidate.email,
     documents: documents
   };
+};
+
+// Get document download URL (generates fresh presigned URL on-demand)
+const getDocumentDownloadUrl = async (candidateId, documentIndex, user) => {
+  const candidate = await Candidate.findById(candidateId);
+  if (!candidate) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Candidate not found');
+  }
+
+  // Check if user has permission to view documents
+  if (!isOwnerOrAdmin(user, candidate)) {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Access denied');
+  }
+
+  // Check if document index is valid
+  if (documentIndex < 0 || documentIndex >= candidate.documents.length) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid document index');
+  }
+
+  const document = candidate.documents[documentIndex];
+  
+  // If document has a key, generate fresh presigned URL
+  if (document.key) {
+    const presignedUrl = await generatePresignedDownloadUrl(document.key, 7 * 24 * 3600);
+    
+    return {
+      url: presignedUrl,
+      fileName: document.originalName || document.label || 'document',
+      mimeType: document.mimeType,
+      size: document.size
+    };
+  }
+  
+  // Fallback: If no key but URL exists, try to extract key from URL
+  if (document.url) {
+    // Try to extract S3 key from the stored URL
+    // Format examples:
+    // - https://bucket.s3.region.amazonaws.com/documents/user/file.pdf?params
+    // - https://s3.region.amazonaws.com/bucket/documents/user/file.pdf?params
+    // - https://vsc-files-storage.s3.ap-south-1.amazonaws.com/documents/.../file.pdf?params
+    
+    let extractedKey = null;
+    
+    // Pattern 1: bucket.s3.region.amazonaws.com/key
+    const pattern1 = /https?:\/\/[^/]+\.s3[.-][^/]+\.amazonaws\.com\/([^?]+)/;
+    const match1 = document.url.match(pattern1);
+    if (match1) {
+      extractedKey = decodeURIComponent(match1[1]);
+    } else {
+      // Pattern 2: s3.region.amazonaws.com/bucket/key
+      const pattern2 = /https?:\/\/s3[.-][^/]+\.amazonaws\.com\/[^/]+\/([^?]+)/;
+      const match2 = document.url.match(pattern2);
+      if (match2) {
+        extractedKey = decodeURIComponent(match2[1]);
+      }
+    }
+    
+    // If we extracted a key, try to generate a fresh presigned URL
+    if (extractedKey) {
+      try {
+        const presignedUrl = await generatePresignedDownloadUrl(extractedKey, 7 * 24 * 3600);
+        
+        // Update the document in database to store the extracted key for future use
+        document.key = extractedKey;
+        await candidate.save();
+        
+        return {
+          url: presignedUrl,
+          fileName: document.originalName || document.label || 'document',
+          mimeType: document.mimeType,
+          size: document.size
+        };
+      } catch (error) {
+        // If key extraction fails, fall back to stored URL
+        console.warn(`Failed to generate presigned URL from extracted key "${extractedKey}": ${error.message}`);
+      }
+    }
+    
+    // Return stored URL as fallback (may be expired, but better than nothing)
+    // This handles old documents that don't have keys stored
+    return {
+      url: document.url,
+      fileName: document.originalName || document.label || 'document',
+      mimeType: document.mimeType,
+      size: document.size
+    };
+  }
+  
+  // No key and no URL - document is invalid
+  throw new ApiError(httpStatus.BAD_REQUEST, 'Document key and URL not found. Document may be corrupted.');
 };
 
 const shareCandidateProfile = async (candidateId, shareData, currentUser) => {
@@ -979,6 +1139,49 @@ const getPublicCandidateProfile = async (candidateId, token, data) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'Candidate not found');
   }
   
+  // Regenerate presigned URL for profile picture if it has a key
+  let profilePicture = candidate.profilePicture;
+  if (profilePicture?.key) {
+    try {
+      const profilePictureUrl = await generatePresignedDownloadUrl(profilePicture.key, 7 * 24 * 3600);
+      profilePicture = { ...profilePicture.toObject(), url: profilePictureUrl };
+    } catch (error) {
+      console.error('Failed to regenerate profile picture URL:', error);
+    }
+  }
+  
+  // Return documents with API endpoint URLs (never expire)
+  // Always use API endpoints, even if key is missing (download endpoint can extract key from URL)
+  let documents = [];
+  if (shareData.withDoc && candidate.documents) {
+    documents = candidate.documents.map((doc, index) => {
+      // Use API endpoint URL instead of direct S3 URL
+      // Only use stored URL if neither key nor url exists (shouldn't happen)
+      const url = (doc.key || doc.url) 
+        ? getDocumentApiUrl(candidate._id.toString(), index) 
+        : doc.url;
+      return { ...doc.toObject(), url };
+    });
+  }
+  
+  // Regenerate presigned URLs for salary slips if withDoc is true
+  let salarySlips = [];
+  if (shareData.withDoc && candidate.salarySlips) {
+    salarySlips = await Promise.all(
+      candidate.salarySlips.map(async (slip) => {
+        let documentUrl = slip.documentUrl;
+        if (slip.key) {
+          try {
+            documentUrl = await generatePresignedDownloadUrl(slip.key, 7 * 24 * 3600);
+          } catch (error) {
+            console.error(`Failed to regenerate URL for salary slip:`, error);
+          }
+        }
+        return { ...slip.toObject(), documentUrl };
+      })
+    );
+  }
+  
   // Prepare candidate data for public display with complete information
   const candidateData = {
     // Basic Information
@@ -988,7 +1191,7 @@ const getPublicCandidateProfile = async (candidateId, token, data) => {
     countryCode: candidate.countryCode,
     
     // Profile Picture
-    profilePicture: candidate.profilePicture,
+    profilePicture,
     
     // Personal Information
     shortBio: candidate.shortBio,
@@ -1018,8 +1221,8 @@ const getPublicCandidateProfile = async (candidateId, token, data) => {
     socialLinks: candidate.socialLinks,
     
     // Documents and Salary Slips (conditional based on withDoc flag)
-    documents: shareData.withDoc ? candidate.documents : [],
-    salarySlips: shareData.withDoc ? candidate.salarySlips : [],
+    documents,
+    salarySlips,
     
     // Sharing Information
     withDoc: shareData.withDoc,
@@ -1381,6 +1584,8 @@ export {
   verifyDocument,
   getDocumentStatus,
   getDocuments,
+  getDocumentDownloadUrl,
+  getDocumentApiUrl,
   // Profile sharing
   shareCandidateProfile,
   getPublicCandidateProfile,

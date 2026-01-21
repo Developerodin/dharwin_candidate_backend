@@ -15,6 +15,7 @@ import {
   verifyDocument,
   getDocumentStatus,
   getDocuments,
+  getDocumentDownloadUrl,
   shareCandidateProfile,
   getPublicCandidateProfile,
   resendCandidateVerificationEmail,
@@ -350,7 +351,33 @@ const getCandidateDocuments = catchAsync(async (req, res) => {
   });
 });
 
-export { verifyDocumentStatus, getCandidateDocumentStatus, getCandidateDocuments };
+const downloadDocument = catchAsync(async (req, res) => {
+  const { candidateId, documentIndex } = req.params;
+  
+  // User is set by documentAuth middleware (supports both Bearer token and query param token)
+  const documentData = await getDocumentDownloadUrl(candidateId, parseInt(documentIndex), req.user);
+  
+  // Check if client wants JSON response (for programmatic access)
+  const acceptsJson = req.headers.accept && req.headers.accept.includes('application/json');
+  
+  if (acceptsJson) {
+    // Return JSON with the presigned URL for programmatic access
+    res.status(httpStatus.OK).json({
+      success: true,
+      data: {
+        url: documentData.url,
+        fileName: documentData.fileName,
+        mimeType: documentData.mimeType,
+        size: documentData.size
+      }
+    });
+  } else {
+    // Redirect to the presigned URL for direct browser access
+    res.redirect(documentData.url);
+  }
+});
+
+export { verifyDocumentStatus, getCandidateDocumentStatus, getCandidateDocuments, downloadDocument };
 
 // Share candidate profile controller
 const shareProfile = catchAsync(async (req, res) => {

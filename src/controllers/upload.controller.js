@@ -68,9 +68,14 @@ const uploadMultipleFiles = catchAsync(async (req, res) => {
 
   // If candidateId is provided, add documents to candidate profile
   if (candidateId) {
+    // Get current candidate to know starting document index
+    const { getCandidateById } = await import('../services/candidate.service.js');
+    const currentCandidate = await getCandidateById(candidateId);
+    const startIndex = currentCandidate ? currentCandidate.documents.length : 0;
+
     const documents = uploadResults.map((result, index) => ({
       label: labels[index] || `Document ${index + 1}`,
-      url: result.url,
+      url: '', // Will be set to API endpoint URL below
       key: result.key,
       originalName: result.originalName,
       size: result.size,
@@ -83,11 +88,22 @@ const uploadMultipleFiles = catchAsync(async (req, res) => {
       },
     }, req.user);
 
+    // Update document URLs to use API endpoints
+    const { getDocumentApiUrl } = await import('../services/candidate.service.js');
+    for (let i = 0; i < documents.length; i++) {
+      const docIndex = startIndex + i;
+      candidate.documents[docIndex].url = getDocumentApiUrl(candidateId, docIndex);
+    }
+    await candidate.save();
+
     return res.status(httpStatus.CREATED).json({
       success: true,
       message: 'Files uploaded and added to candidate profile successfully',
       data: {
-        files: uploadResults,
+        files: uploadResults.map((result, index) => ({
+          ...result,
+          url: candidate.documents[startIndex + index].url,
+        })),
         candidate: candidate,
       },
     });
@@ -133,22 +149,27 @@ const confirmUpload = catchAsync(async (req, res) => {
     throw new ApiError(httpStatus.BAD_REQUEST, 'fileKey, label, and candidateId are required');
   }
 
-  // Generate download URL for the uploaded file
-  const { generatePresignedDownloadUrl } = await import('../config/s3.js');
-  const fileUrl = await generatePresignedDownloadUrl(fileKey, 7 * 24 * 3600); // 7 days expiry
-
-  // Add document to candidate profile
+  // Add document to candidate profile (URL will be set to API endpoint after adding)
   const candidate = await updateCandidateById(candidateId, {
     $push: {
       documents: {
         label,
-        url: fileUrl,
+        url: '', // Will be set to API endpoint URL below
         key: fileKey,
         originalName: req.body.originalFileName || fileKey.split('/').pop(),
         // Note: size and mimeType not available in presigned URL flow
       },
     },
   }, req.user);
+
+  // Get the document index and generate API endpoint URL
+  const documentIndex = candidate.documents.length - 1;
+  const { getDocumentApiUrl } = await import('../services/candidate.service.js');
+  const fileUrl = getDocumentApiUrl(candidateId, documentIndex);
+
+  // Update the document URL to use API endpoint
+  candidate.documents[documentIndex].url = fileUrl;
+  await candidate.save();
 
   res.status(httpStatus.CREATED).json({
     success: true,
