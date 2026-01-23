@@ -41,6 +41,14 @@ const punchIn = async (candidateId, punchInTime = new Date(), notes, timezone = 
   });
 
   if (existingAttendance) {
+    // Don't update Holiday or Leave records - they should remain as-is
+    if (existingAttendance.status === 'Holiday' || existingAttendance.status === 'Leave') {
+      throw new ApiError(
+        httpStatus.BAD_REQUEST,
+        `Cannot punch in on a ${existingAttendance.status.toLowerCase()} day. Please remove the ${existingAttendance.status.toLowerCase()} first if you need to record attendance.`
+      );
+    }
+
     // If already punched out, update the existing entry with new punch-in
     if (existingAttendance.punchOut) {
       existingAttendance.punchIn = punchInTime;
@@ -115,6 +123,7 @@ const punchOut = async (candidateId, punchOutTime = new Date(), notes, timezone)
 
   // Find active punch in - check today, yesterday, and day before yesterday
   // This handles all scenarios including night shifts that span multiple days
+  // Exclude Holiday and Leave records - they should not be punched out
   // First check today
   let attendance = await Attendance.findOne({
     candidate: candidateId,
@@ -124,6 +133,7 @@ const punchOut = async (candidateId, punchOutTime = new Date(), notes, timezone)
     },
     punchOut: null,
     isActive: true,
+    status: { $nin: ['Holiday', 'Leave'] }, // Exclude holidays and leaves
   });
 
   // If not found today, check yesterday (night shift scenario - most common)
@@ -136,6 +146,7 @@ const punchOut = async (candidateId, punchOutTime = new Date(), notes, timezone)
       },
       punchOut: null,
       isActive: true,
+      status: { $nin: ['Holiday', 'Leave'] }, // Exclude holidays and leaves
     });
   }
 
@@ -149,6 +160,7 @@ const punchOut = async (candidateId, punchOutTime = new Date(), notes, timezone)
       },
       punchOut: null,
       isActive: true,
+      status: { $nin: ['Holiday', 'Leave'] }, // Exclude holidays and leaves
     });
   }
 
@@ -213,6 +225,14 @@ const punchOut = async (candidateId, punchOutTime = new Date(), notes, timezone)
     throw new ApiError(
       httpStatus.BAD_REQUEST,
       'No active punch in found. Please punch in first.'
+    );
+  }
+
+  // Additional safety check: Don't allow punching out Holiday or Leave records
+  if (attendance.status === 'Holiday' || attendance.status === 'Leave') {
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      `Cannot punch out on a ${attendance.status.toLowerCase()} day.`
     );
   }
 

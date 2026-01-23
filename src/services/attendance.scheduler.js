@@ -14,9 +14,11 @@ const autoPunchOutExpired = async () => {
     const autoPunchOutDurationHours = config.attendance?.autoPunchOutDurationHours || 12;
 
     // Find all active punch-ins (no punch out)
+    // Exclude Holiday and Leave records - they should not be auto-punched out
     const activePunchIns = await Attendance.find({
       punchOut: null,
       isActive: true,
+      status: { $nin: ['Holiday', 'Leave'] }, // Exclude holidays and leaves
     }).populate('candidate', 'fullName email');
 
     if (!activePunchIns.length) return 0;
