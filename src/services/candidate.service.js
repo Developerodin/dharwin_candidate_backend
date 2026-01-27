@@ -637,15 +637,23 @@ const getCandidateById = async (id) => {
       }
     }
     
-    // Update document URLs to use API endpoints (never expire)
-    // Always use API endpoints, even if key is missing (download endpoint can extract key from URL)
+    // Regenerate document URLs to use direct S3 presigned URLs (like salary slips)
     if (candidate.documents && candidate.documents.length > 0) {
-      candidate.documents.forEach((doc, index) => {
-        // Only update if document has a key OR a URL (old documents)
-        if (doc.key || doc.url) {
-          doc.url = getDocumentApiUrl(candidate._id.toString(), index);
-        }
-      });
+      await Promise.all(
+        candidate.documents.map(async (doc) => {
+          // If we have an S3 key, always prefer a fresh presigned URL
+          if (doc.key) {
+            try {
+              const freshUrl = await generatePresignedDownloadUrl(doc.key, 7 * 24 * 3600);
+              doc.url = freshUrl;
+            } catch (error) {
+              console.error('Failed to regenerate URL for candidate document:', error);
+              // Fallback: keep existing URL (could be old S3 URL or API URL)
+            }
+          }
+          // If there's no key, we leave whatever URL is already stored
+        })
+      );
     }
     
     // Regenerate presigned URLs for salary slips
@@ -906,28 +914,33 @@ const getDocumentStatus = async (candidateId, user) => {
     throw new ApiError(httpStatus.FORBIDDEN, 'Access denied');
   }
 
-  // Return documents with API endpoint URLs (never expire)
-  // Always use API endpoints, even if key is missing (download endpoint can extract key from URL)
-  const documentsWithStatus = candidate.documents.map((doc, index) => {
-    // Use API endpoint URL instead of direct S3 URL
-    // Only use stored URL if neither key nor url exists (shouldn't happen)
-    const url = (doc.key || doc.url) 
-      ? getDocumentApiUrl(candidate._id.toString(), index) 
-      : doc.url;
-    
-    return {
-      index,
-      label: doc.label,
-      originalName: doc.originalName,
-      status: doc.status,
-      adminNotes: doc.adminNotes,
-      verifiedAt: doc.verifiedAt,
-      verifiedBy: doc.verifiedBy,
-      url,
-      size: doc.size,
-      mimeType: doc.mimeType
-    };
-  });
+  // Return documents with direct S3 presigned URLs (like salary slips)
+  const documentsWithStatus = await Promise.all(
+    candidate.documents.map(async (doc, index) => {
+      let url = doc.url;
+
+      if (doc.key) {
+        try {
+          url = await generatePresignedDownloadUrl(doc.key, 7 * 24 * 3600);
+        } catch (error) {
+          console.error('Failed to regenerate URL for candidate document (status):', error);
+        }
+      }
+      
+      return {
+        index,
+        label: doc.label,
+        originalName: doc.originalName,
+        status: doc.status,
+        adminNotes: doc.adminNotes,
+        verifiedAt: doc.verifiedAt,
+        verifiedBy: doc.verifiedBy,
+        url,
+        size: doc.size,
+        mimeType: doc.mimeType
+      };
+    })
+  );
 
   return {
     candidateId: candidate._id,
@@ -948,29 +961,34 @@ const getDocuments = async (candidateId, user) => {
     throw new ApiError(httpStatus.FORBIDDEN, 'Access denied');
   }
 
-  // Return documents with API endpoint URLs (never expire)
-  // Always use API endpoints, even if key is missing (download endpoint can extract key from URL)
-  const documents = candidate.documents.map((doc, index) => {
-    // Use API endpoint URL instead of direct S3 URL
-    // Only use stored URL if neither key nor url exists (shouldn't happen)
-    const url = (doc.key || doc.url) 
-      ? getDocumentApiUrl(candidate._id.toString(), index) 
-      : doc.url;
-    
-    return {
-      index,
-      label: doc.label,
-      originalName: doc.originalName,
-      url,
-      key: doc.key,
-      size: doc.size,
-      mimeType: doc.mimeType,
-      status: doc.status,
-      adminNotes: doc.adminNotes,
-      verifiedAt: doc.verifiedAt,
-      verifiedBy: doc.verifiedBy
-    };
-  });
+  // Return documents with direct S3 presigned URLs (like salary slips)
+  const documents = await Promise.all(
+    candidate.documents.map(async (doc, index) => {
+      let url = doc.url;
+
+      if (doc.key) {
+        try {
+          url = await generatePresignedDownloadUrl(doc.key, 7 * 24 * 3600);
+        } catch (error) {
+          console.error('Failed to regenerate URL for candidate document (list):', error);
+        }
+      }
+      
+      return {
+        index,
+        label: doc.label,
+        originalName: doc.originalName,
+        url,
+        key: doc.key,
+        size: doc.size,
+        mimeType: doc.mimeType,
+        status: doc.status,
+        adminNotes: doc.adminNotes,
+        verifiedAt: doc.verifiedAt,
+        verifiedBy: doc.verifiedBy
+      };
+    })
+  );
 
   return {
     candidateId: candidate._id,
@@ -1150,18 +1168,24 @@ const getPublicCandidateProfile = async (candidateId, token, data) => {
     }
   }
   
-  // Return documents with API endpoint URLs (never expire)
-  // Always use API endpoints, even if key is missing (download endpoint can extract key from URL)
+  // Return documents with direct S3 presigned URLs (never expire within short window)
   let documents = [];
   if (shareData.withDoc && candidate.documents) {
-    documents = candidate.documents.map((doc, index) => {
-      // Use API endpoint URL instead of direct S3 URL
-      // Only use stored URL if neither key nor url exists (shouldn't happen)
-      const url = (doc.key || doc.url) 
-        ? getDocumentApiUrl(candidate._id.toString(), index) 
-        : doc.url;
-      return { ...doc.toObject(), url };
-    });
+    documents = await Promise.all(
+      candidate.documents.map(async (doc, index) => {
+        let url = doc.url;
+
+        if (doc.key) {
+          try {
+            url = await generatePresignedDownloadUrl(doc.key, 7 * 24 * 3600);
+          } catch (error) {
+            console.error('Failed to regenerate URL for public candidate document:', error);
+          }
+        }
+
+        return { ...doc.toObject(), url };
+      })
+    );
   }
   
   // Regenerate presigned URLs for salary slips if withDoc is true
