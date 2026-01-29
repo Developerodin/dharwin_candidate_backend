@@ -5,6 +5,8 @@ import Holiday from '../models/holiday.model.js';
 import Attendance from '../models/attendance.model.js';
 import ApiError from '../utils/ApiError.js';
 import pick from '../utils/pick.js';
+import { addHolidaysToCandidates, removeHolidaysFromCandidates } from './attendance.service.js';
+import config from '../config/config.js';
 
 /**
  * Create a new candidate group
@@ -96,6 +98,7 @@ const updateCandidateGroupById = async (groupId, updateBody, user) => {
   }
 
   const group = await getCandidateGroupById(groupId);
+  const previousCandidateIds = (group.candidates || []).map((c) => String(c._id || c));
 
   // If updating candidates, validate them
   if (updateBody.candidateIds) {
@@ -111,6 +114,24 @@ const updateCandidateGroupById = async (groupId, updateBody, user) => {
 
   Object.assign(group, updateBody);
   await group.save();
+
+  if (group.holidays && group.holidays.length > 0) {
+    const holidayIds = group.holidays.map((h) => String(h._id || h));
+    const currentCandidateIds = (group.candidates || []).map((c) => String(c._id || c));
+
+    // Auto-assign group default holidays to newly added candidates
+    const newCandidateIds = currentCandidateIds.filter((id) => !previousCandidateIds.includes(id));
+    if (newCandidateIds.length > 0) {
+      await addHolidaysToCandidates(newCandidateIds, holidayIds, user);
+    }
+
+    // Remove group default holidays from candidates that were removed from the group
+    const removedCandidateIds = previousCandidateIds.filter((id) => !currentCandidateIds.includes(id));
+    if (removedCandidateIds.length > 0) {
+      await removeHolidaysFromCandidates(removedCandidateIds, holidayIds, user);
+    }
+  }
+
   return await group.populate('candidates', 'fullName email employeeId');
 };
 
@@ -168,6 +189,12 @@ const addCandidatesToGroup = async (groupId, candidateIds, user) => {
   group.candidates = [...(group.candidates || []), ...newCandidateIds];
   await group.save();
 
+  // Auto-assign group default holidays to newly added candidates
+  if (group.holidays && group.holidays.length > 0) {
+    const holidayIds = group.holidays.map((h) => String(h._id || h));
+    await addHolidaysToCandidates(newCandidateIds, holidayIds, user);
+  }
+
   return await group.populate('candidates', 'fullName email employeeId');
 };
 
@@ -200,6 +227,33 @@ const removeCandidatesFromGroup = async (groupId, candidateIds, user) => {
   }
 
   await group.save();
+
+  // Remove this group's default holidays from the removed candidates (symmetric with add)
+  let holidayIdsToRemove = (group.holidays || []).map((h) => String(h._id || h));
+
+  // If group has no stored default holidays (e.g. assigned before we added group.holidays),
+  // infer: from remaining candidates' intersection, or from removed candidates' holidays if none remain
+  if (holidayIdsToRemove.length === 0) {
+    if (group.candidates.length > 0) {
+      const remaining = await Candidate.find({ _id: { $in: group.candidates } }).select('holidays').lean();
+      if (remaining.length > 0) {
+        const first = (remaining[0].holidays || []).map((h) => String(h));
+        holidayIdsToRemove = first.filter((id) =>
+          remaining.every((c) => (c.holidays || []).map((h) => String(h)).includes(id))
+        );
+      }
+    } else {
+      // No one left in group: remove all holidays from the removed candidate(s) (they got them from this group)
+      const removedCandidates = await Candidate.find({ _id: { $in: candidateIdsStr } }).select('holidays').lean();
+      const allIds = new Set();
+      removedCandidates.forEach((c) => (c.holidays || []).forEach((h) => allIds.add(String(h))));
+      holidayIdsToRemove = [...allIds];
+    }
+  }
+
+  if (holidayIdsToRemove.length > 0) {
+    await removeHolidaysFromCandidates(candidateIdsStr, holidayIdsToRemove, user);
+  }
 
   return await group.populate('candidates', 'fullName email employeeId');
 };
@@ -251,12 +305,12 @@ const assignHolidaysToGroup = async (groupId, holidayIds, user) => {
       await candidate.save();
     }
 
-    // Create attendance records for each holiday date
+    // Create attendance records for each holiday date (UTC midnight + app default timezone)
     for (const holiday of holidays) {
       const normalizedDate = new Date(holiday.date);
-      normalizedDate.setHours(0, 0, 0, 0);
+      normalizedDate.setUTCHours(0, 0, 0, 0);
       const nextDay = new Date(normalizedDate);
-      nextDay.setDate(nextDay.getDate() + 1);
+      nextDay.setUTCDate(nextDay.getUTCDate() + 1);
 
       // Check if attendance already exists for this candidate & date
       const existingAttendance = await Attendance.findOne({
@@ -288,13 +342,17 @@ const assignHolidaysToGroup = async (groupId, holidayIds, user) => {
         punchOut: null,
         duration: 0,
         notes: `Holiday: ${holiday.title}`,
-        timezone: 'UTC',
+        timezone: config.attendance?.defaultTimezone || 'UTC',
         status: 'Holiday',
       });
 
       createdRecords.push(await attendance.populate('candidate', 'fullName email'));
     }
   }
+
+  // Save these holidays as the group default (auto-assigned when new candidates are added)
+  group.holidays = holidayIds;
+  await group.save();
 
   return {
     success: true,
@@ -360,12 +418,12 @@ const removeHolidaysFromGroup = async (groupId, holidayIds, user) => {
       await candidate.save();
     }
 
-    // Delete attendance records for each holiday date
+    // Delete attendance records for each holiday date (UTC to match create)
     for (const holiday of holidays) {
       const normalizedDate = new Date(holiday.date);
-      normalizedDate.setHours(0, 0, 0, 0);
+      normalizedDate.setUTCHours(0, 0, 0, 0);
       const nextDay = new Date(normalizedDate);
-      nextDay.setDate(nextDay.getDate() + 1);
+      nextDay.setUTCDate(nextDay.getUTCDate() + 1);
 
       // Find and delete attendance records with status 'Holiday' for this date
       const attendance = await Attendance.findOneAndDelete({
@@ -399,6 +457,11 @@ const removeHolidaysFromGroup = async (groupId, holidayIds, user) => {
       }
     }
   }
+
+  // Update group default holidays so new candidates won't get these
+  const holidayIdsStr = holidayIds.map((id) => String(id));
+  group.holidays = (group.holidays || []).filter((h) => !holidayIdsStr.includes(String(h._id || h)));
+  await group.save();
 
   return {
     success: true,

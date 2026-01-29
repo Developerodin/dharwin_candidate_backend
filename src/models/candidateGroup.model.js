@@ -24,6 +24,17 @@ const candidateGroupSchema = new mongoose.Schema(
       default: [],
       index: true,
     },
+    /** Default holidays for this group; auto-assigned when a candidate is added to the group */
+    holidays: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Holiday',
+        },
+      ],
+      default: [],
+      index: true,
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
