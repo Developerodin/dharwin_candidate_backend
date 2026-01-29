@@ -25,11 +25,12 @@ const punchIn = async (candidateId, punchInTime = new Date(), notes, timezone = 
     throw new ApiError(httpStatus.NOT_FOUND, 'Candidate not found');
   }
 
-  // Get today's date (normalized to start of day)
+  // Get attendance "date" as UTC day (midnight UTC)
+  // This makes sure server timezone does NOT affect stored date
   const today = new Date(punchInTime);
-  today.setHours(0, 0, 0, 0);
+  today.setUTCHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
 
   // Check if there's already an attendance record for today
   const existingAttendance = await Attendance.findOne({
@@ -107,19 +108,19 @@ const punchIn = async (candidateId, punchInTime = new Date(), notes, timezone = 
  * @returns {Promise<Attendance>}
  */
 const punchOut = async (candidateId, punchOutTime = new Date(), notes, timezone) => {
-  // Get today's date (normalized to start of day)
+  // Get today's date as UTC day (midnight UTC)
   const today = new Date(punchOutTime);
-  today.setHours(0, 0, 0, 0);
+  today.setUTCHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
   
   // Get yesterday's date (for night shift support - punch in yesterday, punch out today)
   const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
   
   // Get day before yesterday (for edge cases with very long shifts)
   const dayBeforeYesterday = new Date(today);
-  dayBeforeYesterday.setDate(dayBeforeYesterday.getDate() - 2);
+  dayBeforeYesterday.setUTCDate(dayBeforeYesterday.getUTCDate() - 2);
 
   // Find active punch in - check today, yesterday, and day before yesterday
   // This handles all scenarios including night shifts that span multiple days
@@ -529,12 +530,12 @@ const addHolidaysToCandidates = async (candidateIds, holidayIds, user) => {
       await candidate.save();
     }
 
-    // Create attendance records for each holiday date
+    // Create attendance records for each holiday date (use UTC so Jan 1 stays Jan 1)
     for (const holiday of holidays) {
       const normalizedDate = new Date(holiday.date);
-      normalizedDate.setHours(0, 0, 0, 0);
+      normalizedDate.setUTCHours(0, 0, 0, 0);
       const nextDay = new Date(normalizedDate);
-      nextDay.setDate(nextDay.getDate() + 1);
+      nextDay.setUTCDate(nextDay.getUTCDate() + 1);
 
       // Check if attendance already exists for this candidate & date
       const existingAttendance = await Attendance.findOne({
@@ -638,12 +639,12 @@ const removeHolidaysFromCandidates = async (candidateIds, holidayIds, user) => {
       await candidate.save();
     }
 
-    // Delete attendance records for each holiday date
+    // Delete attendance records for each holiday date (use UTC to match add)
     for (const holiday of holidays) {
       const normalizedDate = new Date(holiday.date);
-      normalizedDate.setHours(0, 0, 0, 0);
+      normalizedDate.setUTCHours(0, 0, 0, 0);
       const nextDay = new Date(normalizedDate);
-      nextDay.setDate(nextDay.getDate() + 1);
+      nextDay.setUTCDate(nextDay.getUTCDate() + 1);
 
       // Find and delete attendance records with status 'Holiday' for this date
       const attendance = await Attendance.findOneAndDelete({

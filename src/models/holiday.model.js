@@ -30,12 +30,12 @@ const holidaySchema = mongoose.Schema(
 holidaySchema.index({ date: -1 });
 holidaySchema.index({ title: 1, date: -1 });
 
-// Pre-save hook to normalize date to start of day
+// Pre-save hook to normalize date to start of day (UTC midnight)
 holidaySchema.pre('save', function (next) {
   if (this.date) {
-    const normalizedDate = new Date(this.date);
-    normalizedDate.setHours(0, 0, 0, 0);
-    this.date = normalizedDate;
+    const d = new Date(this.date);
+    d.setUTCHours(0, 0, 0, 0);
+    this.date = d;
   }
   next();
 });
